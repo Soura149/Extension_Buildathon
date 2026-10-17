@@ -1,9 +1,10 @@
 # AirWrite
 
 AirWrite is a Manifest V3 Chrome extension for drawing annotations over ordinary
-webpages. The current implementation is the first working milestone from the
-implementation plan: a local-only Shadow DOM overlay with mouse/trackpad
-drawing, an eraser, clear, and hide/show controls.
+webpages. The current implementation covers the first two working milestones
+from the implementation plan: a local-only Shadow DOM overlay with
+mouse/trackpad drawing, pen controls, history, an eraser, clear, and hide/show
+controls.
 
 ## Current scope
 
