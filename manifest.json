@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AirWrite",
+  "version": "0.1.0",
+  "description": "Draw annotations over webpages with a mouse or trackpad.",
+  "action": {
+    "default_title": "AirWrite",
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": [
+        "content/canvas.js",
+        "content/toolbar.js",
+        "content/overlay.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": []
+}

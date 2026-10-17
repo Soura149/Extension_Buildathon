@@ -1,0 +1,52 @@
+:host {
+  all: initial;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: block;
+  pointer-events: none;
+}
+
+.airwrite-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.airwrite-toolbar {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(28, 31, 43, 0.94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  color: #fff;
+  font: 13px/1.2 Arial, sans-serif;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.airwrite-toolbar button {
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: transparent;
+  color: #e8eaf0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.airwrite-toolbar button:hover,
+.airwrite-toolbar button.selected {
+  background: #5b4bdb;
+  color: #fff;
+}
