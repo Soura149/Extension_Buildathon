@@ -1,8 +1,19 @@
 (() => {
   class AirWriteCanvas {
-    constructor(canvas) {
+    constructor(canvas, { logicalWidth, logicalHeight } = {}) {
       this.canvas = canvas;
       this.context = canvas.getContext('2d');
+      if (!this.context) {
+        throw new Error('A 2D canvas context is not available.');
+      }
+      this.logicalSize = null;
+      if (logicalWidth !== undefined || logicalHeight !== undefined) {
+        if (!Number.isInteger(logicalWidth) || logicalWidth <= 0 ||
+            !Number.isInteger(logicalHeight) || logicalHeight <= 0) {
+          throw new Error('Snapshot dimensions must be positive integers.');
+        }
+        this.logicalSize = { width: logicalWidth, height: logicalHeight };
+      }
       this.strokes = [];
       this.undoStack = [];
       this.redoStack = [];
@@ -33,12 +44,41 @@
 
     resize() {
       const rect = this.canvas.getBoundingClientRect();
-      const width = Math.max(1, Math.round(rect.width || window.innerWidth));
-      const height = Math.max(1, Math.round(rect.height || window.innerHeight));
-      this.dpr = Math.max(1, window.devicePixelRatio || 1);
+      const width = this.logicalSize?.width || Math.max(1, Math.round(rect.width || window.innerWidth));
+      const height = this.logicalSize?.height || Math.max(1, Math.round(rect.height || window.innerHeight));
+      // A snapshot's coordinates/backing bitmap match the original image pixels.
+      // CSS alone scales both image and annotation layers as the workspace fits.
+      this.dpr = this.logicalSize ? 1 : Math.max(1, window.devicePixelRatio || 1);
       this.canvas.width = Math.round(width * this.dpr);
       this.canvas.height = Math.round(height * this.dpr);
       this.context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.render();
+    }
+
+    getPoint(event) {
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = this.logicalSize ? this.logicalSize.width / (rect.width || 1) : 1;
+      const scaleY = this.logicalSize ? this.logicalSize.height / (rect.height || 1) : 1;
+      return { x: (event.clientX - rect.left) * scaleX, y: (event.clientY - rect.top) * scaleY };
+    }
+
+    getStrokes() {
+      return this.cloneStrokes(this.strokes);
+    }
+
+    setStrokes(strokes) {
+      if (!Array.isArray(strokes) || strokes.some((stroke) =>
+        !stroke || !['pen', 'eraser'].includes(stroke.tool) ||
+        (stroke.tool === 'pen' && !/^#[0-9a-f]{6}$/i.test(stroke.color)) ||
+        !Number.isFinite(stroke.width) || stroke.width <= 0 ||
+        !Array.isArray(stroke.points) || stroke.points.some((point) =>
+          !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)))) {
+        throw new Error('The saved annotation data is invalid.');
+      }
+      this.strokes = this.cloneStrokes(strokes);
+      this.activeStroke = null;
+      this.undoStack = [];
+      this.redoStack = [];
       this.render();
     }
 

@@ -4,7 +4,8 @@
   "private": true,
   "description": "AirWrite Chrome extension",
   "scripts": {
-    "test": "node scripts/validate-project.js"
+    "test": "node scripts/validate-project.js && node --test tests/*.test.js",
+    "test:browser": "node scripts/browser-smoke.js"
   },
   "engines": {
     "node": ">=24.11.0"

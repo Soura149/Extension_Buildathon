@@ -2,7 +2,10 @@
   "manifest_version": 3,
   "name": "AirWrite",
   "version": "0.1.0",
-  "description": "Draw annotations over webpages with a mouse or trackpad.",
+  "description": "Draw over webpages, annotate viewport snapshots, and save editable notes locally.",
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "AirWrite",
     "default_popup": "popup/popup.html"
@@ -19,5 +22,5 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": []
+  "permissions": ["activeTab", "storage"]
 }

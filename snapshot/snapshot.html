@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Snapshot Canvas · AirWrite</title>
+    <link rel="stylesheet" href="snapshot.css">
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <div>
+          <span class="brand-name">AirWrite</span>
+          <h1>Snapshot Canvas</h1>
+        </div>
+      </div>
+      <a id="saved-notes" class="notes-link" href="../notes/notes.html">Saved Notes <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main id="workspace" class="workspace" aria-busy="true">
+      <section id="loading-state" class="state-panel" role="status">
+        <span class="loading-mark" aria-hidden="true"></span>
+        <h2>Opening your snapshot…</h2>
+        <p>Loading the local screenshot and editable annotations.</p>
+      </section>
+
+      <section id="error-state" class="state-panel error-panel" role="alert" hidden>
+        <h2 id="error-title">This snapshot could not be opened</h2>
+        <p id="error-message"></p>
+        <p>To start again, open AirWrite on the webpage you want and choose <strong>Capture &amp; Annotate</strong>. You can also reopen a note from Saved Notes.</p>
+        <button id="retry-load" type="button">Retry loading</button>
+      </section>
+
+      <section id="editor" class="editor" aria-label="Snapshot editor" hidden>
+        <div class="note-header">
+          <div class="note-details">
+            <label class="field-label" for="note-title">Note title</label>
+            <input id="note-title" class="note-title" type="text" maxlength="200" placeholder="Untitled note" autocomplete="off" disabled>
+            <div class="note-metadata">
+              <span id="source-title" class="source-title"></span>
+              <time id="created-at"></time>
+            </div>
+            <p id="source-url" class="source-url"></p>
+          </div>
+          <div class="note-actions" aria-label="Note actions">
+            <button id="save-note" class="primary" type="button" disabled>Save Note</button>
+            <button id="export-image" type="button" disabled>Export Image PNG</button>
+            <button id="discard" class="discard" type="button" disabled>Discard</button>
+          </div>
+        </div>
+
+        <div class="status-row">
+          <span id="save-state" class="save-state" data-state="unsaved">Unsaved capture</span>
+          <p id="workspace-status" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <p id="action-error" class="action-error" role="alert" hidden></p>
+
+        <fieldset id="drawing-controls" class="drawing-controls" disabled>
+          <legend class="visually-hidden">Drawing controls</legend>
+          <div class="control-group" role="group" aria-label="Drawing tool">
+            <button id="tool-pen" type="button" aria-pressed="true">Pen</button>
+            <button id="tool-eraser" type="button" aria-pressed="false">Eraser</button>
+          </div>
+          <div class="control-group colors" role="group" aria-label="Pen color">
+            <button class="color-button color-red" type="button" data-color="#ff3b30" aria-label="Red pen" aria-pressed="true"><span class="swatch" aria-hidden="true"></span><span>Red</span></button>
+            <button class="color-button color-blue" type="button" data-color="#1677ff" aria-label="Blue pen" aria-pressed="false"><span class="swatch" aria-hidden="true"></span><span>Blue</span></button>
+            <button class="color-button color-yellow" type="button" data-color="#ffd60a" aria-label="Yellow pen" aria-pressed="false"><span class="swatch" aria-hidden="true"></span><span>Yellow</span></button>
+          </div>
+          <div class="width-control">
+            <label for="pen-width">Pen width</label>
+            <input id="pen-width" type="range" min="1" max="24" value="4" aria-describedby="width-value">
+            <output id="width-value" for="pen-width">4 px</output>
+          </div>
+          <div class="control-group history-controls" role="group" aria-label="Drawing history">
+            <button id="undo" type="button" title="Undo (Ctrl or Command + Z)">Undo</button>
+            <button id="redo" type="button" title="Redo (Ctrl or Command + Shift + Z)">Redo</button>
+            <button id="clear" type="button">Clear</button>
+          </div>
+        </fieldset>
+
+        <div class="canvas-heading">
+          <p id="canvas-help">Draw with a mouse, pen, or touch. Escape cancels the current stroke. Ctrl/⌘ + Z undoes; Ctrl/⌘ + S saves.</p>
+          <span id="image-dimensions" class="image-dimensions"></span>
+        </div>
+        <div class="image-viewport">
+          <div id="image-stack" class="image-stack">
+            <img id="screenshot" class="screenshot" alt="Captured webpage" draggable="false">
+            <canvas id="annotation-canvas" class="annotation-canvas" tabindex="0" aria-label="Screenshot annotation canvas" aria-describedby="canvas-help" aria-disabled="true">Your browser needs Canvas support to annotate this screenshot.</canvas>
+          </div>
+        </div>
+        <p class="workspace-hint">Saved notes keep the original screenshot and editable strokes on this device. Export downloads a flattened PNG; it does not save a note.</p>
+      </section>
+    </main>
+    <noscript><p class="state-panel">Enable JavaScript to open and annotate a snapshot.</p></noscript>
+    <script src="../storage/notes.js"></script>
+    <script src="../content/canvas.js"></script>
+    <script src="snapshot.js"></script>
+  </body>
+</html>

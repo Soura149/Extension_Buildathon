@@ -15,6 +15,7 @@
       this.element.setAttribute('aria-label', 'AirWrite tools');
       this.element.append(
         this.createElement('strong', 'AirWrite', { className: 'airwrite-title' }),
+        this.createModeIndicator(),
         this.createButton('−', { className: 'airwrite-collapse', action: 'collapse', ariaLabel: 'Collapse toolbar' })
       );
 
@@ -30,7 +31,7 @@
         this.createButton('Browse', { mode: 'browse', ariaPressed: 'false' }),
         this.createButton('Draw', { mode: 'draw', ariaPressed: 'true' })
       );
-      controls.append(modeGroup, this.createModeIndicator(), this.createDivider());
+      controls.append(modeGroup, this.createDivider());
 
       controls.append(
         this.createButton('Pen', { tool: 'pen', ariaPressed: 'true' }),

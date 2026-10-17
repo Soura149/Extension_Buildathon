@@ -1,10 +1,9 @@
 # AirWrite
 
-AirWrite is a Manifest V3 Chrome extension for drawing annotations over ordinary
-webpages. The current implementation covers the Live Overlay milestone with a
-local-only Shadow DOM overlay, explicit Browse/Draw interaction modes,
-mouse/trackpad drawing, pen controls, history, an eraser, clear, and hide/show
-controls.
+AirWrite is a local-only Manifest V3 Chrome extension with two annotation modes:
+draw over a live webpage, or capture its visible viewport and annotate a stable
+image in a separate workspace. Save editable snapshot notes on this device or
+export an annotated PNG. No account, server, or runtime npm dependency is needed.
 
 ## Current scope
 
@@ -21,23 +20,41 @@ controls.
 - Clear and hide/show controls.
 - Collapsible toolbar.
 - HiDPI canvas sizing and redraw after viewport resize.
+- **Capture & Annotate** opens a separate Snapshot Canvas workspace.
+- Snapshot pen/eraser, colours, width, undo/redo, and undoable clear reuse the
+  overlay drawing engine. Image-relative coordinates stay aligned on resize.
+- **Save Note**, **Export Image PNG**, and confirmed **Discard** actions.
+- **Saved Notes** with source-screenshot thumbnails, titles, source links,
+  creation dates, editable reopen, rename, and confirmed delete.
+- Original screenshots and editable strokes are stored separately in IndexedDB;
+  only small metadata is kept in `chrome.storage.local`.
+- Captured note images are normalized to WebP quality 0.82 (JPEG fallback) and
+  saved notes have a strict 50 MiB total application cap. Usage warnings begin
+  at 45 MiB; `getStorageUsage()` exposes bytes, percentage, and warning state.
 
 ### Not implemented yet
 
 - Webcam air-writing.
-- Snapshot screenshot capture and saved notes.
-- Persistence across page reloads.
+- Full-page scrolling capture.
+- Live-overlay drawing persistence across page reloads (snapshot notes persist).
+- Cloud sync, collaboration, and annotation autosave.
 
-Chrome restricts extensions from injecting into pages such as `chrome://` pages
-and the Chrome Web Store. Drawings are currently page-local and are lost when
-the page is refreshed.
+Chrome restricts injection/capture on browser-internal and Chrome Web Store
+pages. Live drawings are page-local and disappear on refresh. Capturing does not
+transfer live strokes: it temporarily hides/restores the overlay without clearing
+it, then starts a clean annotation session over the webpage screenshot.
+
+The Chrome smoke test covers the editor and real local persistence. The actual
+popup capture permission flow, download prompts, browser restart, and Google/
+YouTube interactions still require `tests/manual-checklist.md`; do not treat
+the offline tests as proof of those checks.
 
 ## Setup
 
 Requirements:
 
 - Google Chrome desktop with Developer mode enabled in `chrome://extensions`.
-- Node.js 24.11.0 or a compatible newer Node.js release for the offline checks.
+- Node.js **24.11.0**, pinned in `.nvmrc`, for reproducible checks.
 
 The extension has no runtime dependencies and does not require a backend.
 
@@ -53,6 +70,25 @@ The extension has no runtime dependencies and does not require a backend.
 After changing extension files, use **Reload** on the extension and refresh the
 test webpage. If the active page is restricted, the popup shows an explanation.
 
+## Capture, save, and export
+
+1. Open an ordinary HTTP(S) webpage and open the AirWrite popup.
+2. Choose **Capture & Annotate**. Keep that tab active until capture finishes.
+3. A new tab displays the visible-viewport screenshot. Draw with **Pen** or
+   **Eraser**, select a colour/width, and use Undo/Redo/Clear as needed.
+4. Enter a title and choose **Save Note** to keep an editable local note.
+5. Choose **Export Image PNG** to download the screenshot plus annotations.
+   Export is a flattened copy, not a saved editable note.
+6. Open **Saved Notes** from the popup or workspace to reopen, rename, or delete.
+   Saved Notes remains accessible even from a restricted webpage.
+
+Unsaved edits trigger leave/discard warnings, subject to browser behavior. They
+are not autosaved. Temporary capture drafts expire after 24 hours when another
+capture is created; Save Note before closing/reloading to retain your edits.
+Saved notes use browser-local extension storage and can be lost if extension
+data is cleared, storage is evicted, or the extension is removed. See
+`storage/README.md` for the versioned schema, quotas, and write-failure behavior.
+
 ## Test
 
 Run the single offline project check from the repository root:
@@ -62,9 +98,25 @@ npm ci
 npm test
 ```
 
-The check validates required files, validates the Manifest V3 configuration, and
-syntax-checks every extension JavaScript file. Use `tests/manual-checklist.md`
-for the browser integration checks.
+The check validates local resources and the Manifest V3 configuration,
+syntax-checks every extension JavaScript file, and runs Node's built-in test
+runner for drawing, capture/error handling, popup, storage, and notes-list
+regressions. Tests run offline after checkout/install with no browser or backend.
+`make test` delegates to the same command where Make is installed.
+
+Optional real-Chrome smoke check (requires a recent installed Chrome/Chromium
+with the DevTools `Extensions.loadUnpacked` API; nothing is downloaded):
+
+```sh
+CHROME_PATH=/path/to/chrome npm run test:browser
+```
+
+In PowerShell, set `$env:CHROME_PATH` to the Chrome executable, then run
+`npm run test:browser`. The smoke uses a fresh disposable profile and an offline
+localhost fixture, verifies real IndexedDB/Chrome storage and editor/export
+pixels, then removes its profile. It suppresses the actual download. If running
+Chrome as root in a container, explicitly set `CHROME_NO_SANDBOX=1` for this
+disposable test only. Full manual release checks: `tests/manual-checklist.md`.
 
 Docker runs the same check in a pinned Node image:
 
@@ -83,8 +135,12 @@ There is no server deployment step and no account or secret is required.
 
 ```text
 manifest.json
+background.js # user-initiated capture and draft handoff
 popup/       # ephemeral extension popup controls
 content/     # page overlay, Shadow DOM toolbar, and canvas drawing
-tests/       # browser manual regression checklist
-scripts/     # offline repository validation
+snapshot/    # responsive screenshot annotation workspace
+storage/     # IndexedDB/Chrome local persistence and schema documentation
+notes/       # Saved Notes library
+tests/       # offline Node regressions and manual Chrome checklist
+scripts/     # offline validation and optional real-Chrome smoke
 ```

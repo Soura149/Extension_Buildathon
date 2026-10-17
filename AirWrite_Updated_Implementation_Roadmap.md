@@ -31,14 +31,22 @@ The existing repository already includes the following. **Do not rebuild these f
 - Local/offline project validation script and `npm test`.
 - README and manual testing checklist.
 - No runtime npm dependencies and no backend.
+- Explicit Browse/Draw interaction controls (indicator remains visible when collapsed).
+- Phase C implementation: user-initiated capture worker and Snapshot Canvas workspace,
+  original-image coordinates, shared pen tools, annotated PNG export, and safe discard.
+- Phase D implementation: IndexedDB screenshot/stroke storage, Chrome local metadata,
+  editable saved notes, and a Saved Notes list with rename/delete.
+- Phase D quota: captured note images are WebP quality 0.82 (JPEG fallback),
+  total saved-note accounting has a 50 MiB hard cap, and usage warnings begin at 90%.
+- Offline behavior tests and an optional real-Chrome editor/storage smoke check.
 
 ### Known limitations
 
-- Drawings disappear after refreshing or navigating away from the page.
-- There is no screenshot capture or snapshot annotation workspace yet.
-- There is no saved-notes library.
+- Live Overlay drawings disappear after refreshing or navigating away; saved snapshot notes persist locally.
+- Snapshot edits are not autosaved. Temporary captures expire after 24 hours when another capture is created.
 - Webcam hand tracking and air-writing are not implemented.
-- Browser automation tests are not implemented.
+- The actual popup capture permission gesture, download prompts, browser restart,
+  and Google/YouTube manual checks are still pending; automated editor tests do not prove these.
 - Some browser-internal and restricted pages cannot be injected into; this is expected.
 - The manual Chrome interaction checklist still needs to be completed on the developer's machine.
 
@@ -340,15 +348,15 @@ Experimental air-writing for Live Overlay and/or Snapshot Canvas. Start with Sna
 
 # 5. Recommended order for the next work session
 
-- [ ] Run `npm ci` and `npm test`.
+- [x] Run `npm ci` and `npm test` (28 offline behavior tests pass).
 - [ ] Load the extension in Chrome and complete `tests/manual-checklist.md`.
 - [ ] Fix any failures with the existing overlay.
-- [ ] Implement explicit Browse / Draw mode.
-- [ ] Add the Snapshot Canvas page.
-- [ ] Capture the visible tab and show it in the new page.
-- [ ] Reuse the existing drawing tools over the screenshot.
-- [ ] Add annotated image export.
-- [ ] Add local Save Note and Saved Notes list.
+- [x] Implement explicit Browse / Draw mode.
+- [x] Add the Snapshot Canvas page.
+- [x] Implement visible-tab capture and draft-ID handoff (real popup gesture check pending).
+- [x] Reuse the existing drawing tools over the screenshot.
+- [x] Add annotated PNG export (composition/encoding verified; download prompt check pending).
+- [x] Add local Save Note and Saved Notes list (Chrome save/reload/edit/rename/delete smoke passes).
 - [ ] Add webcam hand tracking only after the above is reliable.
 
 ---
@@ -389,6 +397,9 @@ Follow the event's current rules about permitted generative AI tools, open-sourc
 
 ## Current milestone
 
-**The immediate next milestone is Phase A + Phase B: verify the existing Live Overlay and make Browse/Draw toggling reliable. After that, implement Phase C: Snapshot Canvas.**
+**Phase C + Phase D are implemented with offline regression coverage and real-Chrome
+editor/storage smoke coverage. Complete the remaining manual Live Overlay, popup
+capture, download, and restart checks in `tests/manual-checklist.md` before calling
+these phases browser-verified or starting Phase E webcam tracking.**
 
 Do not rebuild the canvas, toolbar, undo/redo, or eraser from scratch. Reuse the existing drawing engine.

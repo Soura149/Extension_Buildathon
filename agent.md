@@ -11,17 +11,17 @@ and draw annotations over an ordinary webpage. The updated roadmap describes a
 progression from a reliable Live Overlay and Snapshot Canvas workflow to
 webcam air-writing and contextual saved notes.
 
-The work completed so far deliberately focuses on the first reliable product
-slice: Phases 0 and 1, the practical pen-tool portion of Phase 2, and the
-roadmap's explicit Browse/Draw interaction milestone. Webcam tracking, Snapshot
-Canvas, and contextual note storage remain future work.
+The implemented scope now includes Live Overlay (updated roadmap Phases A/B),
+Snapshot Canvas (Phase C), and local saved notes (Phase D). Webcam tracking
+remains future work. See the latest session update at the end for current
+checks and gaps; earlier implementation/check sections below are historical.
 
 ## Source plan reviewed
 
 The complete `AirWrite_Implementation_Plan.md` was read before implementation.
 The active `AirWrite_Updated_Implementation_Roadmap.md` is now the source for
-the current milestone: stabilize Live Overlay behavior and make Browse/Draw
-toggling reliable before beginning Snapshot Canvas.
+the phase order: Live Overlay, Browse/Draw, Snapshot Canvas, local saved notes,
+then opt-in webcam tracking after browser verification.
 Important decisions taken from that plan:
 
 - Use plain JavaScript, HTML, and CSS rather than React or a backend.
@@ -339,15 +339,13 @@ The following are intentionally not implemented yet:
 - Webcam camera page and MediaPipe hand-landmark tracking.
 - Pinch-to-draw air-writing input.
 - Camera calibration and camera status states.
-- `chrome.tabs.captureVisibleTab` screenshot capture.
-- Local contextual notes with URL, title, timestamp, screenshot, and strokes.
-- Notes list, reopen, delete, and annotated image export.
-- Persistence across page refreshes.
+- Persistence of Live Overlay drawings across source-page refreshes.
 - Full-page scrolling capture.
-- Automated browser interaction tests.
+- Autosave of unsaved snapshot edits and collaborative note merging.
 
-The current drawing is page-local. Refreshing the webpage recreates the content
-script and loses the drawing, as documented in `README.md`.
+Live drawing is page-local. Saved snapshot notes instead persist through local
+extension storage. Capture permission gestures, actual download prompts, browser
+restart persistence, and Google/YouTube checks still need manual verification.
 
 ## How to resume
 
@@ -355,19 +353,20 @@ script and loses the drawing, as documented in `README.md`.
 2. Load the repository folder through Chrome's **Load unpacked** option at
    `chrome://extensions`.
 3. Open an ordinary HTTP(S) webpage.
-4. Complete `tests/manual-checklist.md` before starting webcam work.
-5. For Phase 3, first create a separate camera demo that requests permission
-   only after user action and displays clear camera status.
+4. Complete `tests/manual-checklist.md` for Live Overlay, capture/export, and
+   saved notes before starting webcam work.
+5. For updated roadmap Phase E, first create a separate camera demo that requests
+   permission only after user action and displays clear camera status.
 6. Keep hand tracking separate from the content script and adapt hand input to
    the existing `beginStroke`, `continueStroke`, and `finishStroke` behavior.
-7. For Phase 4, preserve editable stroke data separately from screenshot data
-   and use local extension storage or IndexedDB as appropriate.
+7. Keep the Phase D storage contract documented in `storage/README.md`; preserve
+   editable stroke data separately from screenshot blobs.
 
 Do not remove the mouse drawing path when adding webcam input; the plan
 explicitly requires mouse fallback and graceful handling when tracking is
 lost.
 
-## Current roadmap session update — 2026-10-18
+## Earlier Phase A/B session update — 2026-10-18
 
 The active roadmap's current milestone is Phase A plus Phase B. Snapshot Canvas
 (Phase C) was intentionally not started because the roadmap requires the Live
@@ -416,3 +415,91 @@ those browser checks complete based only on the Node validation command.
 Load the unpacked extension in Chrome, run the manual Phase A and B checks, and
 record any real injection, pointer, or page-interaction failures before adding
 Snapshot Canvas capture.
+
+## Latest session — Phase C/D implementation (2026-10-18)
+
+### User-visible result and architecture
+
+- Popup now offers **Capture & Annotate** and **Saved Notes** alongside the
+  existing overlay control. Notes remain accessible on restricted pages.
+- `background.js` is an MV3 service worker. It accepts capture only from the
+  popup, checks tab/window identity before/after capture, suspends/restores the
+  source overlay, decodes the local screenshot data URL into a Blob, stores a
+  draft, and opens `snapshot/snapshot.html?draft=<id>`. Screenshot bytes are not
+  sent in messages or URLs. The content script also has a restore timeout.
+- `manifest.json` adds only `activeTab` and `storage` permissions. No broad
+  tabs/host, downloads, camera, or unlimited-storage grant was added.
+- `content/canvas.js` remains the shared drawing engine. Its optional
+  `{logicalWidth, logicalHeight}` mode keeps snapshot coordinates/backing pixels
+  in the original image size, with `getPoint`, `getStrokes`, and `setStrokes`
+  supporting scale-independent input and editable note reopening.
+- `snapshot/` implements image plus transparent canvas, existing tools/history,
+  title/source/date, Save Note, PNG export, discard/leave warnings, pending-save
+  locks, and recoverable errors. PNG composition keeps the original screenshot
+  intact under eraser strokes. Saves reuse a stable ID on retry; success changes
+  the workspace address to `?note=<id>` before removing its draft.
+- `storage/notes.js` exposes `AirWriteNotes` for drafts and notes. Original image
+  Blobs and editable strokes occupy separate IndexedDB stores. Chrome local
+  storage retains a small compatibility metadata mirror, with Web Locks and
+  verified readback. The IndexedDB v2 `notes` store contains metadata and cloned
+  strokes linked by note ID. See `storage/README.md` for schema, quota, and
+  cross-storage failure caveats.
+- Saved-note images are normalized to WebP quality `0.82` with JPEG fallback
+  when the browser encoder requires it. `getStorageUsage()` accounts compressed
+  screenshot bytes plus UTF-8 metadata/stroke bytes; `storageWarning` begins at
+  45 MiB and saves are rejected above the 50 MiB hard cap with the roadmap's
+  exact message. `getNotes()` and `getNoteById()` provide the requested Phase D
+  API names while the existing `listNotes()`/`getNote()` callers remain valid.
+- `notes/` shows source-screenshot thumbnails, titles, safe source links, dates,
+  editable Open, Rename, and confirmed Delete with loading/empty/error states.
+- `content/toolbar.js` now keeps the current-mode indicator visible even when
+  collapsed; programmatic mode updates synchronize the indicator too.
+
+### Verification and lessons
+
+- `npm ci` and `npm test` run from the repository root. The offline test command
+  now includes Node behavior tests, not just manifest/syntax validation.
+- Added drawing/coordinate, capture lifecycle/failure, popup, storage/readback,
+  notes UI, and safe URL/object-URL regressions under `tests/`.
+- `scripts/browser-smoke.js` (`npm run test:browser` with `CHROME_PATH`) loads
+  the real unpacked extension in a disposable Chrome profile. It uses a local
+  deterministic fixture, real pointer input, IndexedDB/Chrome storage, eraser/
+  export pixel checks, CSS/DPR resize, save/reload, rename/delete, discard, missing
+  note errors, and a Trusted Types-restricted page injection check. No real
+  screenshot/private page data or browser profile is copied into the repo.
+- The first real-Chrome save exposed metadata object-key reordering that the
+  original mocks missed. Equality now ignores key order, the mock reproduces
+  Chrome ordering, and a dedicated regression prevents recurrence.
+- The quota pass added a real 50 MiB accounting test (including editable stroke
+  bytes), the 90% warning flag, cap-preserving failed replacement behavior, and
+  real-Chrome verification that saved screenshot Blobs read back as WebP/JPEG.
+- README, active roadmap, and manual checklist now distinguish implemented code,
+  automated evidence, and pending browser release checks.
+
+Final commands/results from the repository root:
+
+```text
+npm ci                         passed
+npm test                       passed: 9 extension JS files validated, 30 tests
+node --check scripts/browser-smoke.js   passed
+npm run test:browser            passed with installed Chrome and CHROME_PATH
+git diff --check               passed (only Git line-ending warnings)
+```
+
+The browser smoke used an approved temporary directory for its fresh profile,
+removed the profile afterward, and suppressed downloads. Docker/Make were not
+rerun in this session; their earlier environment limitations remain unverified.
+
+### Remaining release gate / next step
+
+Run the expanded manual checklist, especially the real popup `activeTab` capture
+gesture, actual PNG download, closing/reopening Chrome, and Google/YouTube.
+The automated smoke does not exercise those paths or install Chrome. Docker is
+still the pinned offline Node-test image; the optional browser check requires a
+separate installed recent Chrome/Chromium. Webcam Phase E has not been started.
+
+Unsaved edits are not autosaved. Drafts older than 24 hours are cleaned on the
+next capture. Two editors of one note follow last successful save wins. Storage
+failures can leave unused staged payloads because IndexedDB and Chrome storage
+cannot commit atomically; errors must stay visible and must not clear the draft.
+Preserve the unrelated pre-existing `reasoning.md`; it was not read or modified.

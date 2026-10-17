@@ -161,6 +161,7 @@
       const drawingEnabled = this.visible && this.mode === 'draw';
       this.canvasElement.style.pointerEvents = drawingEnabled ? 'auto' : 'none';
       this.canvasElement.style.touchAction = drawingEnabled ? 'none' : 'auto';
+      this.toolbar?.setMode(this.mode);
     }
   }
 

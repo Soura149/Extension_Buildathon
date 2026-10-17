@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Saved Notes — AirWrite</title>
+    <link rel="stylesheet" href="notes.css">
+    <script src="../storage/notes.js" defer></script>
+    <script src="notes.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header class="page-header">
+        <div>
+          <p class="brand">AirWrite</p>
+          <h1>Saved Notes</h1>
+          <p class="intro">Your screenshots and editable annotations, saved on this device.</p>
+        </div>
+        <button id="reload-notes" type="button">Reload notes</button>
+      </header>
+      <p id="notes-status" role="status" aria-live="polite" data-state="loading">Loading saved notes…</p>
+      <ul id="notes-list" class="notes-grid" aria-label="Saved notes" aria-busy="true"></ul>
+      <noscript>JavaScript is required to load your locally saved notes.</noscript>
+    </main>
+  </body>
+</html>
