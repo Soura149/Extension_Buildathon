@@ -13,13 +13,14 @@ drawing, an eraser, clear, and hide/show controls.
 - Transparent viewport overlay on permitted `http://` and `https://` pages.
 - Mouse and trackpad freehand input using pointer events.
 - Pen and pixel eraser modes.
+- Pen colour and thickness controls.
+- Undo and redo for strokes and clear.
 - Clear and hide/show controls.
+- Collapsible toolbar.
 - HiDPI canvas sizing and redraw after viewport resize.
 
 ### Not implemented yet
 
-- Pen colour and thickness controls.
-- Undo and redo.
 - Webcam air-writing.
 - Screenshot capture and saved notes.
 - Persistence across page reloads.

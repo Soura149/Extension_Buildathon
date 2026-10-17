@@ -4,6 +4,8 @@
       this.canvas = canvas;
       this.context = canvas.getContext('2d');
       this.strokes = [];
+      this.undoStack = [];
+      this.redoStack = [];
       this.activeStroke = null;
       this.tool = 'pen';
       this.color = '#ff3b30';
@@ -14,6 +16,19 @@
 
     setTool(tool) {
       this.tool = tool === 'eraser' ? 'eraser' : 'pen';
+    }
+
+    setColor(color) {
+      if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) {
+        this.color = color;
+      }
+    }
+
+    setWidth(width) {
+      const nextWidth = Number(width);
+      if (Number.isFinite(nextWidth)) {
+        this.width = Math.min(24, Math.max(1, nextWidth));
+      }
     }
 
     resize() {
@@ -49,6 +64,8 @@
       if (!this.activeStroke) {
         return;
       }
+      this.undoStack.push(this.cloneStrokes(this.strokes));
+      this.redoStack = [];
       this.strokes.push(this.activeStroke);
       this.activeStroke = null;
       this.render();
@@ -60,9 +77,47 @@
     }
 
     clear() {
+      if (this.strokes.length === 0) {
+        return;
+      }
+      this.undoStack.push(this.cloneStrokes(this.strokes));
+      this.redoStack = [];
       this.strokes = [];
       this.activeStroke = null;
       this.render();
+    }
+
+    undo() {
+      if (this.activeStroke) {
+        this.cancelStroke();
+      }
+      if (this.undoStack.length === 0) {
+        return;
+      }
+      this.redoStack.push(this.cloneStrokes(this.strokes));
+      this.strokes = this.undoStack.pop();
+      this.render();
+    }
+
+    redo() {
+      if (this.activeStroke) {
+        this.cancelStroke();
+      }
+      if (this.redoStack.length === 0) {
+        return;
+      }
+      this.undoStack.push(this.cloneStrokes(this.strokes));
+      this.strokes = this.redoStack.pop();
+      this.render();
+    }
+
+    cloneStrokes(strokes) {
+      return strokes.map((stroke) => ({
+        tool: stroke.tool,
+        color: stroke.color,
+        width: stroke.width,
+        points: stroke.points.map((point) => ({ x: point.x, y: point.y }))
+      }));
     }
 
     render() {

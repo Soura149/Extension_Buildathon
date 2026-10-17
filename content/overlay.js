@@ -4,9 +4,20 @@
     .airwrite-canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; pointer-events: auto; touch-action: none; }
     .airwrite-toolbar { position: fixed; top: 16px; left: 16px; display: flex; align-items: center; gap: 6px; padding: 7px; border: 1px solid rgba(255,255,255,.22); border-radius: 10px; background: rgba(28,31,43,.94); box-shadow: 0 8px 24px rgba(0,0,0,.24); color: #fff; font: 13px/1.2 Arial,sans-serif; pointer-events: auto; user-select: none; }
     .airwrite-title { padding: 0 5px; white-space: nowrap; }
+    .airwrite-controls { display: flex; align-items: center; gap: 6px; }
+    .airwrite-toolbar.collapsed .airwrite-controls { display: none; }
+    .airwrite-collapse { min-width: 24px; }
     .airwrite-divider { width: 1px; height: 18px; background: rgba(255,255,255,.24); }
     .airwrite-toolbar button { border: 0; border-radius: 6px; padding: 7px 9px; background: transparent; color: #e8eaf0; cursor: pointer; font: inherit; }
     .airwrite-toolbar button:hover, .airwrite-toolbar button.selected { background: #5b4bdb; color: #fff; }
+    .airwrite-colors { display: flex; gap: 4px; }
+    .airwrite-color { width: 18px; min-width: 18px; height: 18px; padding: 0 !important; border: 2px solid rgba(255,255,255,.65) !important; border-radius: 50% !important; }
+    .airwrite-color.selected { outline: 2px solid #fff; outline-offset: 1px; }
+    .color-red { background: #ff3b30 !important; }
+    .color-blue { background: #1677ff !important; }
+    .color-yellow { background: #ffd60a !important; }
+    .airwrite-width { display: flex; align-items: center; gap: 4px; color: #c8ccd8; font-size: 11px; }
+    .airwrite-width input { width: 65px; accent-color: #8c7cff; }
   `;
 
   class AirWriteOverlay {
@@ -43,6 +54,10 @@
 
       this.toolbar = new window.AirWriteToolbar({
         onToolChange: (tool) => this.canvas.setTool(tool),
+        onColorChange: (color) => this.canvas.setColor(color),
+        onWidthChange: (width) => this.canvas.setWidth(width),
+        onUndo: () => this.canvas.undo(),
+        onRedo: () => this.canvas.redo(),
         onClear: () => this.canvas.clear(),
         onHide: () => this.hide()
       });

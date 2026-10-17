@@ -13,6 +13,11 @@ allow content-script injection.
 - [ ] **Eraser** removes pixels from an existing stroke.
 - [ ] **Draw** switches back from erasing.
 - [ ] **Clear** removes all drawing but leaves the toolbar visible.
+- [ ] Changing the colour changes subsequent pen strokes.
+- [ ] Changing the width changes subsequent pen strokes.
+- [ ] **Undo** removes the latest stroke or clear operation.
+- [ ] **Redo** restores an undone stroke or clear operation.
+- [ ] Collapsing the toolbar hides its controls without hiding the drawing.
 - [ ] **Hide overlay** removes the drawing surface and toolbar from hit testing.
 - [ ] **Show overlay** restores the existing drawing.
 - [ ] Toolbar clicks do not create accidental marks.

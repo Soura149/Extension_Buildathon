@@ -35,6 +35,25 @@
   user-select: none;
 }
 
+.airwrite-title {
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.airwrite-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.airwrite-toolbar.collapsed .airwrite-controls {
+  display: none;
+}
+
+.airwrite-collapse {
+  min-width: 24px;
+}
+
 .airwrite-toolbar button {
   border: 0;
   border-radius: 6px;
@@ -49,4 +68,40 @@
 .airwrite-toolbar button.selected {
   background: #5b4bdb;
   color: #fff;
+}
+
+.airwrite-colors {
+  display: flex;
+  gap: 4px;
+}
+
+.airwrite-color {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 !important;
+  border: 2px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 50% !important;
+}
+
+.airwrite-color.selected {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.color-red { background: #ff3b30 !important; }
+.color-blue { background: #1677ff !important; }
+.color-yellow { background: #ffd60a !important; }
+
+.airwrite-width {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #c8ccd8;
+  font-size: 11px;
+}
+
+.airwrite-width input {
+  width: 65px;
+  accent-color: #8c7cff;
 }
