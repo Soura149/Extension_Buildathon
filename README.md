@@ -1,8 +1,8 @@
 # AirWrite
 
 AirWrite is a Manifest V3 Chrome extension for drawing annotations over ordinary
-webpages. The current implementation covers the first two working milestones
-from the implementation plan: a local-only Shadow DOM overlay with
+webpages. The current implementation covers the Live Overlay milestone with a
+local-only Shadow DOM overlay, explicit Browse/Draw interaction modes,
 mouse/trackpad drawing, pen controls, history, an eraser, clear, and hide/show
 controls.
 
@@ -12,6 +12,8 @@ controls.
 
 - Chrome desktop extension loaded with **Load unpacked**.
 - Transparent viewport overlay on permitted `http://` and `https://` pages.
+- Browse mode lets links, scrolling, and text selection reach the webpage.
+- Draw mode captures pointer input for annotation strokes.
 - Mouse and trackpad freehand input using pointer events.
 - Pen and pixel eraser modes.
 - Pen colour and thickness controls.
@@ -23,7 +25,7 @@ controls.
 ### Not implemented yet
 
 - Webcam air-writing.
-- Screenshot capture and saved notes.
+- Snapshot screenshot capture and saved notes.
 - Persistence across page reloads.
 
 Chrome restricts extensions from injecting into pages such as `chrome://` pages
@@ -45,6 +47,8 @@ The extension has no runtime dependencies and does not require a backend.
 4. Select **Load unpacked** and choose this repository folder.
 5. Open an ordinary HTTP(S) webpage.
 6. Click the AirWrite extension icon and select **Enable overlay**.
+7. Use **Browse** when interacting with the webpage and **Draw** when adding an
+   annotation. The current mode is shown in the overlay toolbar.
 
 After changing extension files, use **Reload** on the extension and refresh the
 test webpage. If the active page is restricted, the popup shows an explanation.

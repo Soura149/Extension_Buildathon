@@ -13,8 +13,8 @@
   display: block;
   width: 100vw;
   height: 100vh;
-  pointer-events: auto;
-  touch-action: none;
+  pointer-events: none;
+  touch-action: auto;
 }
 
 .airwrite-toolbar {
@@ -52,6 +52,18 @@
 
 .airwrite-collapse {
   min-width: 24px;
+}
+
+.airwrite-mode-group {
+  display: flex;
+  gap: 2px;
+}
+
+.airwrite-mode-indicator {
+  padding: 0 4px;
+  color: #c8ccd8;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .airwrite-toolbar button {

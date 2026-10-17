@@ -1,6 +1,7 @@
 (() => {
   class AirWriteToolbar {
-    constructor({ onToolChange, onColorChange, onWidthChange, onUndo, onRedo, onClear, onHide }) {
+    constructor({ onModeChange, onToolChange, onColorChange, onWidthChange, onUndo, onRedo, onClear, onHide }) {
+      this.onModeChange = onModeChange;
       this.onToolChange = onToolChange;
       this.onColorChange = onColorChange;
       this.onWidthChange = onWidthChange;
@@ -12,30 +13,68 @@
       this.element.className = 'airwrite-toolbar';
       this.element.setAttribute('role', 'toolbar');
       this.element.setAttribute('aria-label', 'AirWrite tools');
-      this.element.innerHTML = `
-        <strong class="airwrite-title">AirWrite</strong>
-        <button type="button" class="airwrite-collapse" data-action="collapse" aria-label="Collapse toolbar">−</button>
-        <div class="airwrite-controls">
-          <span class="airwrite-divider" aria-hidden="true"></span>
-          <button type="button" data-tool="pen" aria-pressed="true">Draw</button>
-          <button type="button" data-tool="eraser" aria-pressed="false">Eraser</button>
-          <span class="airwrite-divider" aria-hidden="true"></span>
-          <span class="airwrite-colors" aria-label="Pen colour">
-            <button type="button" class="airwrite-color color-red selected" data-color="#ff3b30" aria-label="Red pen colour"></button>
-            <button type="button" class="airwrite-color color-blue" data-color="#1677ff" aria-label="Blue pen colour"></button>
-            <button type="button" class="airwrite-color color-yellow" data-color="#ffd60a" aria-label="Yellow pen colour"></button>
-          </span>
-          <label class="airwrite-width" title="Pen thickness">
-            <span aria-hidden="true">Width</span>
-            <input type="range" data-width min="1" max="24" value="4" aria-label="Pen thickness">
-          </label>
-          <span class="airwrite-divider" aria-hidden="true"></span>
-          <button type="button" data-action="undo">Undo</button>
-          <button type="button" data-action="redo">Redo</button>
-          <button type="button" data-action="clear">Clear</button>
-          <button type="button" data-action="hide">Hide</button>
-        </div>
-      `;
+      this.element.append(
+        this.createElement('strong', 'AirWrite', { className: 'airwrite-title' }),
+        this.createButton('−', { className: 'airwrite-collapse', action: 'collapse', ariaLabel: 'Collapse toolbar' })
+      );
+
+      const controls = this.createElement('div', null, { className: 'airwrite-controls' });
+      controls.append(this.createDivider());
+
+      const modeGroup = this.createElement('span', null, {
+        className: 'airwrite-mode-group',
+        role: 'group',
+        ariaLabel: 'Interaction mode'
+      });
+      modeGroup.append(
+        this.createButton('Browse', { mode: 'browse', ariaPressed: 'false' }),
+        this.createButton('Draw', { mode: 'draw', ariaPressed: 'true' })
+      );
+      controls.append(modeGroup, this.createModeIndicator(), this.createDivider());
+
+      controls.append(
+        this.createButton('Pen', { tool: 'pen', ariaPressed: 'true' }),
+        this.createButton('Eraser', { tool: 'eraser', ariaPressed: 'false' }),
+        this.createDivider()
+      );
+
+      const colors = this.createElement('span', null, {
+        className: 'airwrite-colors',
+        role: 'group',
+        ariaLabel: 'Pen colour'
+      });
+      colors.append(
+        this.createButton('', { className: 'airwrite-color color-red selected', color: '#ff3b30', ariaLabel: 'Red pen colour' }),
+        this.createButton('', { className: 'airwrite-color color-blue', color: '#1677ff', ariaLabel: 'Blue pen colour' }),
+        this.createButton('', { className: 'airwrite-color color-yellow', color: '#ffd60a', ariaLabel: 'Yellow pen colour' })
+      );
+      controls.append(colors);
+
+      const widthLabel = this.createElement('label', null, {
+        className: 'airwrite-width',
+        title: 'Pen thickness'
+      });
+      widthLabel.append(
+        this.createElement('span', 'Width', { ariaHidden: 'true' })
+      );
+      const widthInput = document.createElement('input');
+      widthInput.type = 'range';
+      widthInput.min = '1';
+      widthInput.max = '24';
+      widthInput.value = '4';
+      widthInput.setAttribute('data-width', '');
+      widthInput.setAttribute('aria-label', 'Pen thickness');
+      widthLabel.append(widthInput);
+      controls.append(widthLabel, this.createDivider());
+
+      controls.append(
+        this.createButton('Undo', { action: 'undo' }),
+        this.createButton('Redo', { action: 'redo' }),
+        this.createButton('Clear', { action: 'clear' }),
+        this.createButton('Hide', { action: 'hide' })
+      );
+      this.element.append(controls);
+
       this.element.addEventListener('pointerdown', (event) => event.stopPropagation());
       this.element.addEventListener('click', (event) => this.handleClick(event));
       this.element.addEventListener('input', (event) => {
@@ -43,7 +82,65 @@
           this.onWidthChange(event.target.value);
         }
       });
+      this.setMode('draw');
       this.setTool('pen');
+    }
+
+    createElement(tagName, text, attributes = {}) {
+      const element = document.createElement(tagName);
+      if (text !== null && text !== undefined) {
+        element.textContent = text;
+      }
+      if (attributes.className) {
+        element.className = attributes.className;
+      }
+      if (attributes.role) {
+        element.setAttribute('role', attributes.role);
+      }
+      if (attributes.ariaLabel) {
+        element.setAttribute('aria-label', attributes.ariaLabel);
+      }
+      if (attributes.ariaPressed) {
+        element.setAttribute('aria-pressed', attributes.ariaPressed);
+      }
+      if (attributes.ariaHidden) {
+        element.setAttribute('aria-hidden', attributes.ariaHidden);
+      }
+      if (attributes.title) {
+        element.setAttribute('title', attributes.title);
+      }
+      return element;
+    }
+
+    createButton(label, { className, action, mode, tool, color, ariaLabel, ariaPressed } = {}) {
+      const button = this.createElement('button', label, { className, ariaLabel, ariaPressed });
+      button.type = 'button';
+      if (action) {
+        button.dataset.action = action;
+      }
+      if (mode) {
+        button.dataset.mode = mode;
+      }
+      if (tool) {
+        button.dataset.tool = tool;
+      }
+      if (color) {
+        button.dataset.color = color;
+      }
+      return button;
+    }
+
+    createDivider() {
+      return this.createElement('span', null, { className: 'airwrite-divider', ariaHidden: 'true' });
+    }
+
+    createModeIndicator() {
+      const indicator = this.createElement('span', 'Draw mode', {
+        className: 'airwrite-mode-indicator',
+        ariaLabel: 'Current interaction mode'
+      });
+      indicator.setAttribute('data-mode-indicator', '');
+      return indicator;
     }
 
     handleClick(event) {
@@ -55,6 +152,12 @@
       if (tool) {
         this.setTool(tool);
         this.onToolChange(tool);
+        return;
+      }
+      const mode = button.dataset.mode;
+      if (mode) {
+        this.setMode(mode);
+        this.onModeChange(mode);
         return;
       }
       const color = button.dataset.color;
@@ -85,6 +188,19 @@
         const selected = button.dataset.tool === tool;
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', String(selected));
+      }
+    }
+
+    setMode(mode) {
+      const selectedMode = mode === 'browse' ? 'browse' : 'draw';
+      for (const button of this.element.querySelectorAll('[data-mode]')) {
+        const selected = button.dataset.mode === selectedMode;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      }
+      const indicator = this.element.querySelector('[data-mode-indicator]');
+      if (indicator) {
+        indicator.textContent = selectedMode === 'browse' ? 'Browse mode' : 'Draw mode';
       }
     }
   }

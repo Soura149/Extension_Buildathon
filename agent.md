@@ -6,18 +6,22 @@ developer resume the project without reconstructing the earlier decisions.
 
 ## Project goal
 
-AirWrite is a local-only Chrome Manifest V3 extension that lets a user draw
-annotations over an ordinary webpage. The implementation plan describes a
-progression from a mouse-driven annotation overlay to pen tools, webcam
-air-writing, and contextual saved notes.
+AirWrite is a local-only Chrome Manifest V3 extension that lets a user browse
+and draw annotations over an ordinary webpage. The updated roadmap describes a
+progression from a reliable Live Overlay and Snapshot Canvas workflow to
+webcam air-writing and contextual saved notes.
 
 The work completed so far deliberately focuses on the first reliable product
-slice: Phases 0, 1, and the practical pen-tool portion of Phase 2. Webcam
-tracking and contextual note storage remain future work.
+slice: Phases 0 and 1, the practical pen-tool portion of Phase 2, and the
+roadmap's explicit Browse/Draw interaction milestone. Webcam tracking, Snapshot
+Canvas, and contextual note storage remain future work.
 
 ## Source plan reviewed
 
 The complete `AirWrite_Implementation_Plan.md` was read before implementation.
+The active `AirWrite_Updated_Implementation_Roadmap.md` is now the source for
+the current milestone: stabilize Live Overlay behavior and make Browse/Draw
+toggling reliable before beginning Snapshot Canvas.
 Important decisions taken from that plan:
 
 - Use plain JavaScript, HTML, and CSS rather than React or a backend.
@@ -141,6 +145,7 @@ Controls implemented:
 - Eraser mode.
 - Red, blue, and yellow pen colours.
 - Pen thickness slider from 1 through 24.
+- Explicit Browse and Draw interaction modes with a visible mode indicator.
 - Undo.
 - Redo.
 - Clear.
@@ -150,6 +155,10 @@ Controls implemented:
 Toolbar pointer events are stopped at the toolbar boundary, and toolbar
 controls are separate from the canvas so toolbar clicks do not create drawing
 marks.
+
+The toolbar is constructed with safe DOM APIs (`createElement`, attributes, and
+`textContent`) rather than an injected `innerHTML` template. This avoids a
+Trusted Types-sensitive construction path on restrictive pages.
 
 #### `content/overlay.css`
 
@@ -176,6 +185,10 @@ Implemented behavior:
 - Shows the overlay without recreating the current drawing.
 - Handles `pointerdown`, `pointermove`, `pointerup`, `pointercancel`, and lost
   pointer capture.
+- Tracks the active pointer ID and cancels interrupted strokes safely.
+- Applies Browse mode with `pointer-events: none` on the canvas, allowing page
+  links, scrolling, and text selection to work normally.
+- Applies Draw mode with pointer capture enabled for drawing.
 - Uses pointer capture during drawing.
 - Cancels an active stroke on window blur.
 - Redraws on viewport resize.
@@ -353,3 +366,53 @@ script and loses the drawing, as documented in `README.md`.
 Do not remove the mouse drawing path when adding webcam input; the plan
 explicitly requires mouse fallback and graceful handling when tracking is
 lost.
+
+## Current roadmap session update — 2026-10-18
+
+The active roadmap's current milestone is Phase A plus Phase B. Snapshot Canvas
+(Phase C) was intentionally not started because the roadmap requires the Live
+Overlay interaction model to be reliable first.
+
+### Changes made in this session
+
+- Restored the required `Dockerfile` after the repository test gate reported it
+  missing.
+- Rebuilt `content/toolbar.js` with safe DOM construction instead of raw
+  `innerHTML`.
+- Added Browse and Draw buttons plus a visible current-mode indicator.
+- Made Browse mode set the canvas to `pointer-events: none` so normal page
+  interaction can pass through.
+- Kept toolbar controls interactive in both modes and preserved the selected
+  mode across hide/show.
+- Added active pointer ID tracking and cancellation for pointer cancel, lost
+  pointer capture, window blur, and mode changes.
+- Expanded `tests/manual-checklist.md` with Browse/Draw and Phase A browser
+  coverage checks.
+- Updated `README.md` to describe the current interaction model.
+- Updated the popup hint to explain when to use Browse versus Draw.
+
+### Checks run for this session
+
+From the repository root:
+
+```sh
+npm ci --ignore-scripts
+npm test
+node --check content/toolbar.js
+node --check content/overlay.js
+node --check content/canvas.js
+node --check content/content.js
+node --check popup/popup.js
+git diff --check
+```
+
+`npm test` passed with `Validated manifest and 5 JavaScript files.` Full
+interactive Chrome testing remains pending; use the expanded manual checklist
+on ordinary supported pages, including Google Search and YouTube. Do not mark
+those browser checks complete based only on the Node validation command.
+
+### Next concrete step
+
+Load the unpacked extension in Chrome, run the manual Phase A and B checks, and
+record any real injection, pointer, or page-interaction failures before adding
+Snapshot Canvas capture.

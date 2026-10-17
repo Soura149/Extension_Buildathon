@@ -1,12 +1,14 @@
 (() => {
   const OVERLAY_CSS = `
     :host { all: initial; position: fixed; inset: 0; z-index: 2147483647; display: block; pointer-events: none; }
-    .airwrite-canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; pointer-events: auto; touch-action: none; }
+    .airwrite-canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; pointer-events: none; touch-action: auto; }
     .airwrite-toolbar { position: fixed; top: 16px; left: 16px; display: flex; align-items: center; gap: 6px; padding: 7px; border: 1px solid rgba(255,255,255,.22); border-radius: 10px; background: rgba(28,31,43,.94); box-shadow: 0 8px 24px rgba(0,0,0,.24); color: #fff; font: 13px/1.2 Arial,sans-serif; pointer-events: auto; user-select: none; }
     .airwrite-title { padding: 0 5px; white-space: nowrap; }
     .airwrite-controls { display: flex; align-items: center; gap: 6px; }
     .airwrite-toolbar.collapsed .airwrite-controls { display: none; }
     .airwrite-collapse { min-width: 24px; }
+    .airwrite-mode-group { display: flex; gap: 2px; }
+    .airwrite-mode-indicator { padding: 0 4px; color: #c8ccd8; font-size: 11px; white-space: nowrap; }
     .airwrite-divider { width: 1px; height: 18px; background: rgba(255,255,255,.24); }
     .airwrite-toolbar button { border: 0; border-radius: 6px; padding: 7px 9px; background: transparent; color: #e8eaf0; cursor: pointer; font: inherit; }
     .airwrite-toolbar button:hover, .airwrite-toolbar button.selected { background: #5b4bdb; color: #fff; }
@@ -28,8 +30,10 @@
       this.canvas = null;
       this.toolbar = null;
       this.visible = false;
+      this.mode = 'draw';
+      this.activePointerId = null;
       this.handleResize = () => this.canvas?.resize();
-      this.handleWindowBlur = () => this.canvas?.cancelStroke();
+      this.handleWindowBlur = () => this.cancelStroke();
     }
 
     ensureMounted() {
@@ -53,6 +57,7 @@
       this.canvas = new window.AirWriteCanvas(this.canvasElement);
 
       this.toolbar = new window.AirWriteToolbar({
+        onModeChange: (mode) => this.setMode(mode),
         onToolChange: (tool) => this.canvas.setTool(tool),
         onColorChange: (color) => this.canvas.setColor(color),
         onWidthChange: (width) => this.canvas.setWidth(width),
@@ -65,33 +70,46 @@
 
       this.canvasElement.addEventListener('pointerdown', (event) => this.beginStroke(event));
       this.canvasElement.addEventListener('pointermove', (event) => this.continueStroke(event));
-      this.canvasElement.addEventListener('pointerup', () => this.finishStroke());
-      this.canvasElement.addEventListener('pointercancel', () => this.finishStroke());
-      this.canvasElement.addEventListener('lostpointercapture', () => this.finishStroke());
+      this.canvasElement.addEventListener('pointerup', (event) => this.finishStroke(event));
+      this.canvasElement.addEventListener('pointercancel', (event) => this.cancelStroke(event));
+      this.canvasElement.addEventListener('lostpointercapture', (event) => this.cancelStroke(event));
       window.addEventListener('resize', this.handleResize);
       window.addEventListener('blur', this.handleWindowBlur);
       document.documentElement.append(this.host);
     }
 
     beginStroke(event) {
-      if (!this.visible || event.button !== 0) {
+      if (!this.visible || this.mode !== 'draw' || event.button !== 0 || this.activePointerId !== null) {
         return;
       }
       this.canvasElement.setPointerCapture(event.pointerId);
+      this.activePointerId = event.pointerId;
       const point = this.getPoint(event);
       this.canvas.beginStroke(point.x, point.y);
     }
 
     continueStroke(event) {
-      if (!this.visible || !this.canvas?.activeStroke) {
+      if (!this.visible || this.mode !== 'draw' || event.pointerId !== this.activePointerId || !this.canvas?.activeStroke) {
         return;
       }
       const point = this.getPoint(event);
       this.canvas.continueStroke(point.x, point.y);
     }
 
-    finishStroke() {
+    finishStroke(event) {
+      if (event && event.pointerId !== this.activePointerId) {
+        return;
+      }
+      this.activePointerId = null;
       this.canvas?.finishStroke();
+    }
+
+    cancelStroke(event) {
+      if (event && event.pointerId !== this.activePointerId) {
+        return;
+      }
+      this.activePointerId = null;
+      this.canvas?.cancelStroke();
     }
 
     getPoint(event) {
@@ -102,8 +120,8 @@
     show() {
       this.ensureMounted();
       this.host.style.display = 'block';
-      this.canvasElement.style.pointerEvents = 'auto';
       this.visible = true;
+      this.applyMode();
       this.canvas.resize();
       return this.getState();
     }
@@ -112,7 +130,7 @@
       if (!this.host) {
         return this.getState();
       }
-      this.canvas.cancelStroke();
+      this.cancelStroke();
       this.host.style.display = 'none';
       this.canvasElement.style.pointerEvents = 'none';
       this.visible = false;
@@ -124,7 +142,25 @@
     }
 
     getState() {
-      return { visible: this.visible };
+      return { visible: this.visible, mode: this.mode };
+    }
+
+    setMode(mode) {
+      this.mode = mode === 'browse' ? 'browse' : 'draw';
+      if (this.mode === 'browse') {
+        this.cancelStroke();
+      }
+      this.applyMode();
+      return this.getState();
+    }
+
+    applyMode() {
+      if (!this.canvasElement) {
+        return;
+      }
+      const drawingEnabled = this.visible && this.mode === 'draw';
+      this.canvasElement.style.pointerEvents = drawingEnabled ? 'auto' : 'none';
+      this.canvasElement.style.touchAction = drawingEnabled ? 'none' : 'auto';
     }
   }
 
