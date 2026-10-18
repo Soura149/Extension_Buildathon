@@ -71,6 +71,14 @@
           <p class="airwriting-help"><strong>Tips:</strong> keep your whole hand visible inside the preview and use steady lighting. Hover to reposition, and use the open palm to erase nearby annotations.</p>
           <div class="airwriting-preview-wrap">
             <video id="airwriting-video" class="airwriting-video" autoplay muted playsinline aria-label="Local air-writing camera preview"></video>
+            <div id="airwriting-gesture-hud" class="airwriting-gesture-hud" role="status" aria-live="polite" aria-atomic="true" aria-label="Air-writing gesture legend">
+              <div class="gesture-badges" aria-label="Gesture legend">
+                <span class="gesture-badge gesture-badge-draw" data-gesture="draw">☝️ <strong>Draw</strong></span>
+                <span class="gesture-badge gesture-badge-hover" data-gesture="hover">✌️ <strong>Hover</strong></span>
+                <span class="gesture-badge gesture-badge-erase" data-gesture="erase">✋ <strong>Erase</strong></span>
+              </div>
+              <span id="airwriting-searching" class="gesture-searching" hidden>Searching for hand…</span>
+            </div>
             <p class="airwriting-local">Local processing only · no camera frames are saved or uploaded.</p>
           </div>
         </section>

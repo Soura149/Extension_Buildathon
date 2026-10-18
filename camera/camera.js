@@ -157,6 +157,7 @@
         if (!active) return;
         const classified = tracking.classifyFrame(frame, trackingState, { mirror: settings.mirror !== false });
         if (!classified.tracked) {
+          if (typeof settings.onModeChange === 'function') settings.onModeChange('none', classified);
           hideCursor();
           endMode('tracking-lost');
           resetGesture();
@@ -167,6 +168,7 @@
         const firstHand = !hadHand;
         hadHand = true;
         trackingState = classified;
+        if (typeof settings.onModeChange === 'function') settings.onModeChange(classified.mode, classified);
         const indexPoint = typeof tracking.smoothPointWithLimit === 'function'
           ? tracking.smoothPointWithLimit(lastPoint, classified.point, settings.smoothing ?? 0.2, settings.maxPointJump ?? 0.18)
           : tracking.smoothPoint(lastPoint, classified.point, settings.smoothing ?? 0.2);

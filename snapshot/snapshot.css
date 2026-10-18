@@ -285,16 +285,79 @@ h1 {
 .airwriting-actions button { min-height: 36px; padding-block: 7px; }
 .airwriting-actions .secondary { background: #fff; }
 .airwriting-state { align-self: center; color: #596274; font-size: 12px; font-weight: 700; }
-.airwriting-state[data-state="Drawing"] { color: #22634a; }
+.airwriting-state[data-state="Writing"] { color: #22634a; }
+.airwriting-state[data-state="Hovering cursor"] { color: #1d5fa7; }
+.airwriting-state[data-state="Erasing"] { color: #b45309; }
 .airwriting-state[data-state="Error"], .airwriting-state[data-state="Tracking lost"] { color: #92253a; }
 .airwriting-panel > .action-error { grid-column: 1 / -1; margin: 0; }
 .airwriting-help { grid-column: 1 / -1; margin: 0; color: #596274; font-size: 12px; line-height: 1.5; }
-.airwriting-preview-wrap { grid-column: 1 / -1; display: none; position: relative; max-width: 320px; }
-.airwriting-panel[data-active="true"] .airwriting-preview-wrap { display: block; }
-.airwriting-video { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: #1d2330; object-fit: cover; transform: scaleX(-1); }
-.airwriting-local { margin: 5px 0 0; color: #596274; font-size: 11px; }
+.airwriting-preview-wrap {
+  grid-column: 1 / -1;
+  display: none;
+  position: relative;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  z-index: 1000;
+  border: 2px solid #5b4bdb;
+  border-radius: 12px;
+  padding: 8px;
+  background: #1d2330;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+
+.airwriting-panel[data-active="true"] .airwriting-preview-wrap {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  display: block;
+}
+
+.airwriting-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: #1d2330;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.airwriting-gesture-hud {
+  margin-top: 7px;
+  color: #f8fafc;
+  font-size: 11px;
+}
+
+.gesture-badges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.gesture-badge,
+.gesture-searching {
+  display: block;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 6px;
+  padding: 5px 3px;
+  background: rgb(255 255 255 / 9%);
+  color: #cbd5e1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.gesture-badge strong { color: #f8fafc; font-weight: 700; }
+.gesture-badge.active { color: #fff; box-shadow: 0 0 0 1px currentColor, 0 0 12px rgb(255 255 255 / 16%); }
+.gesture-badge-draw.active { border-color: #4ade80; background: rgb(34 197 94 / 28%); color: #86efac; }
+.gesture-badge-hover.active { border-color: #60a5fa; background: rgb(37 99 235 / 30%); color: #93c5fd; }
+.gesture-badge-erase.active { border-color: #fb923c; background: rgb(234 88 12 / 32%); color: #fdba74; }
+.gesture-searching { margin-top: 5px; border-color: rgb(255 255 255 / 22%); color: #cbd5e1; }
+.airwriting-local { margin: 6px 0 0; color: #cbd5e1; font-size: 10px; line-height: 1.3; }
 
 .drawing-controls {
+  position: sticky;
+  top: 12px;
+  z-index: 500;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -304,7 +367,9 @@ h1 {
   border: 1px solid #e0e3ee;
   border-radius: 12px;
   padding: 14px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .control-group {
@@ -529,6 +594,11 @@ h1 {
   .state-panel {
     margin-block: 24px;
     padding: 22px;
+  }
+
+  .airwriting-panel[data-active="true"] .airwriting-preview-wrap {
+    right: 12px;
+    bottom: 12px;
   }
 }
 

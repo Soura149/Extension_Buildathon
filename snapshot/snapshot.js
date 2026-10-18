@@ -26,6 +26,8 @@
     airwritingState: byId('airwriting-state'),
     airwritingError: byId('airwriting-error'),
     airwritingVideo: byId('airwriting-video'),
+    airwritingGestureHud: byId('airwriting-gesture-hud'),
+    airwritingSearching: byId('airwriting-searching'),
     airwritingCursor: byId('airwriting-cursor'),
     controls: byId('drawing-controls'),
     pen: byId('tool-pen'),
@@ -117,6 +119,17 @@
     ui.airwritingStop.disabled = !active;
   }
 
+  function setGestureHud(mode) {
+    const trackedMode = ['draw', 'hover', 'erase'].includes(mode) ? mode : null;
+    for (const badge of ui.airwritingGestureHud?.querySelectorAll('[data-gesture]') || []) {
+      const active = badge.dataset.gesture === trackedMode;
+      badge.classList.toggle('active', active);
+      badge.setAttribute('aria-current', active ? 'true' : 'false');
+    }
+    if (ui.airwritingSearching) ui.airwritingSearching.hidden = trackedMode !== null;
+    if (ui.airwritingGestureHud) ui.airwritingGestureHud.dataset.mode = trackedMode || 'searching';
+  }
+
   function imagePoint(normalized) {
     return { x: normalized.x * state.imageWidth, y: normalized.y * state.imageHeight };
   }
@@ -166,8 +179,10 @@
       maxPointJump: 0.18,
       onStateChange: (value, detail) => {
         setAirwritingState(value, detail);
+        if (value === 'Camera off' || value === 'Error' || value === 'Tracking lost') setGestureHud('none');
         if (value === 'Camera off' || value === 'Error') ui.airwritingCursor.hidden = true;
       },
+      onModeChange: (_mode, classified) => setGestureHud(classified?.mode || 'none'),
       onStartStroke: (point) => {
         if (!canEdit() || state.pointerId !== null || state.cameraGesture) return false;
         const mapped = imagePoint(point);
@@ -211,6 +226,7 @@
       onEndStroke: ({ reason }) => endCameraStroke(reason, false)
     });
     setAirwritingState(state.camera.state);
+    setGestureHud('none');
   }
 
   function refreshControls() {
