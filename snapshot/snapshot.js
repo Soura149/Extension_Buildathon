@@ -26,6 +26,12 @@
     airwritingState: byId('airwriting-state'),
     airwritingError: byId('airwriting-error'),
     airwritingVideo: byId('airwriting-video'),
+    airwritingPreview: byId('airwriting-preview'),
+    airwritingDragHandle: byId('airwriting-drag-handle'),
+    airwritingMinimize: byId('airwriting-minimize'),
+    airwritingMinimizedPill: byId('airwriting-minimized-pill'),
+    airwritingMinimizedIcon: byId('airwriting-minimized-icon'),
+    airwritingExpand: byId('airwriting-expand'),
     airwritingGestureHud: byId('airwriting-gesture-hud'),
     airwritingSearching: byId('airwriting-searching'),
     airwritingCursor: byId('airwriting-cursor'),
@@ -69,6 +75,7 @@
     ,cameraDrawing: false
     ,cameraStrokePoints: 0
     ,cameraToolBefore: null
+    ,previewDrag: null
   };
 
   function signature(title, strokes) {
@@ -121,13 +128,90 @@
 
   function setGestureHud(mode) {
     const trackedMode = ['draw', 'hover', 'erase'].includes(mode) ? mode : null;
+    const labels = { draw: 'Draw', hover: 'Hover', erase: 'Erase' };
     for (const badge of ui.airwritingGestureHud?.querySelectorAll('[data-gesture]') || []) {
       const active = badge.dataset.gesture === trackedMode;
       badge.classList.toggle('active', active);
       badge.setAttribute('aria-current', active ? 'true' : 'false');
     }
-    if (ui.airwritingSearching) ui.airwritingSearching.hidden = trackedMode !== null;
+    if (ui.airwritingSearching) {
+      ui.airwritingSearching.textContent = trackedMode ? `${labels[trackedMode]} mode` : 'Searching for hand…';
+      ui.airwritingSearching.style.opacity = trackedMode ? '0' : '1';
+      ui.airwritingSearching.setAttribute('aria-hidden', String(trackedMode !== null));
+    }
     if (ui.airwritingGestureHud) ui.airwritingGestureHud.dataset.mode = trackedMode || 'searching';
+    if (ui.airwritingMinimizedIcon) {
+      ui.airwritingMinimizedIcon.replaceChildren();
+      ui.airwritingMinimizedIcon.dataset.mode = trackedMode || 'searching';
+      const source = trackedMode && ui.airwritingGestureHud?.querySelector(`[data-gesture="${trackedMode}"] svg`);
+      if (source) ui.airwritingMinimizedIcon.append(source.cloneNode(true));
+      else ui.airwritingMinimizedIcon.textContent = '…';
+    }
+    if (ui.airwritingMinimizedPill) {
+      ui.airwritingMinimizedPill.setAttribute('aria-label', trackedMode
+        ? `${labels[trackedMode]} gesture. Expand camera preview.`
+        : 'Searching for hand. Expand camera preview.');
+    }
+  }
+
+  function setPreviewMinimized(minimized) {
+    const value = Boolean(minimized);
+    ui.airwritingPreview?.classList.toggle('minimized', value);
+    if (ui.airwritingMinimize) {
+      ui.airwritingMinimize.textContent = value ? '+' : '−';
+      ui.airwritingMinimize.title = value ? 'Expand camera' : 'Minimize camera';
+      ui.airwritingMinimize.setAttribute('aria-label', value ? 'Expand preview' : 'Minimize preview');
+      ui.airwritingMinimize.setAttribute('aria-expanded', String(!value));
+    }
+    if (ui.airwritingExpand) ui.airwritingExpand.setAttribute('aria-expanded', String(value));
+  }
+
+  function startPreviewDrag(event) {
+    if (!ui.airwritingPreview || event.button !== 0 || event.target.closest('button')) return;
+    const bounds = ui.airwritingPreview.getBoundingClientRect();
+    state.previewDrag = {
+      offsetX: event.clientX - bounds.left,
+      offsetY: event.clientY - bounds.top
+    };
+    ui.airwritingPreview.style.left = `${bounds.left}px`;
+    ui.airwritingPreview.style.top = `${bounds.top}px`;
+    ui.airwritingPreview.style.right = 'auto';
+    ui.airwritingPreview.style.bottom = 'auto';
+    ui.airwritingPreview.classList.add('dragging');
+    event.preventDefault();
+  }
+
+  function movePreview(event) {
+    if (!state.previewDrag || !ui.airwritingPreview) return;
+    const bounds = ui.airwritingPreview.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.min(
+      Math.max(margin, event.clientX - state.previewDrag.offsetX),
+      Math.max(margin, window.innerWidth - bounds.width - margin)
+    );
+    const top = Math.min(
+      Math.max(margin, event.clientY - state.previewDrag.offsetY),
+      Math.max(margin, window.innerHeight - bounds.height - margin)
+    );
+    ui.airwritingPreview.style.left = `${left}px`;
+    ui.airwritingPreview.style.top = `${top}px`;
+  }
+
+  function stopPreviewDrag() {
+    if (!state.previewDrag) return;
+    state.previewDrag = null;
+    ui.airwritingPreview?.classList.remove('dragging');
+  }
+
+  function initializePreviewInteractions() {
+    ui.airwritingDragHandle?.addEventListener('mousedown', startPreviewDrag);
+    ui.airwritingMinimizedPill?.addEventListener('mousedown', startPreviewDrag);
+    ui.airwritingMinimize?.addEventListener('click', () => {
+      setPreviewMinimized(!ui.airwritingPreview?.classList.contains('minimized'));
+    });
+    ui.airwritingExpand?.addEventListener('click', () => setPreviewMinimized(false));
+    window.addEventListener('mousemove', movePreview);
+    window.addEventListener('mouseup', stopPreviewDrag);
   }
 
   function imagePoint(normalized) {
@@ -792,5 +876,6 @@
     }
   }
 
+  initializePreviewInteractions();
   loadSession();
 })();

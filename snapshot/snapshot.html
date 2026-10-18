@@ -60,7 +60,7 @@
           <div class="airwriting-copy">
             <span class="experimental-badge">Experimental</span>
             <h2 id="airwriting-heading">Air-writing</h2>
-            <p>Point with only your index finger ☝️ to write. Pinch or raise two fingers ✌️ to hover without drawing. Show an open palm ✋ to erase around your palm and wrist. Mouse and touch remain available.</p>
+            <p>Point with only your index finger to write. Pinch or raise two fingers to hover without drawing. Show an open palm to erase around your palm and wrist. Mouse and touch remain available.</p>
           </div>
           <div class="airwriting-actions">
             <button id="airwriting-start" type="button">Start Air-writing</button>
@@ -69,17 +69,39 @@
           </div>
           <p id="airwriting-error" class="action-error" role="alert"></p>
           <p class="airwriting-help"><strong>Tips:</strong> keep your whole hand visible inside the preview and use steady lighting. Hover to reposition, and use the open palm to erase nearby annotations.</p>
-          <div class="airwriting-preview-wrap">
+          <div class="airwriting-preview-wrap" id="airwriting-preview">
+            <div class="airwriting-preview-header" id="airwriting-drag-handle">
+              <span class="preview-title">
+                <svg class="preview-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                Camera
+              </span>
+              <button id="airwriting-minimize" type="button" class="preview-btn" title="Minimize camera" aria-label="Minimize preview" aria-expanded="true">−</button>
+            </div>
             <video id="airwriting-video" class="airwriting-video" autoplay muted playsinline aria-label="Local air-writing camera preview"></video>
             <div id="airwriting-gesture-hud" class="airwriting-gesture-hud" role="status" aria-live="polite" aria-atomic="true" aria-label="Air-writing gesture legend">
               <div class="gesture-badges" aria-label="Gesture legend">
-                <span class="gesture-badge gesture-badge-draw" data-gesture="draw">☝️ <strong>Draw</strong></span>
-                <span class="gesture-badge gesture-badge-hover" data-gesture="hover">✌️ <strong>Hover</strong></span>
-                <span class="gesture-badge gesture-badge-erase" data-gesture="erase">✋ <strong>Erase</strong></span>
+                <span class="gesture-badge gesture-badge-draw" data-gesture="draw">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <strong>Draw</strong>
+                </span>
+                <span class="gesture-badge gesture-badge-hover" data-gesture="hover">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+                  <strong>Hover</strong>
+                </span>
+                <span class="gesture-badge gesture-badge-erase" data-gesture="erase">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                  <strong>Erase</strong>
+                </span>
               </div>
-              <span id="airwriting-searching" class="gesture-searching" hidden>Searching for hand…</span>
+              <div class="gesture-status-bar">
+                <span id="airwriting-searching" class="gesture-status-message">Searching for hand…</span>
+              </div>
             </div>
             <p class="airwriting-local">Local processing only · no camera frames are saved or uploaded.</p>
+            <div id="airwriting-minimized-pill" class="airwriting-minimized-pill">
+              <span id="airwriting-minimized-icon" class="minimized-gesture-icon" aria-hidden="true"></span>
+              <button id="airwriting-expand" type="button" class="preview-btn" title="Expand camera" aria-label="Expand camera preview" aria-expanded="false">+</button>
+            </div>
           </div>
         </section>
 

@@ -11,16 +11,32 @@ const snapshot = fs.readFileSync(path.join(root, 'snapshot/snapshot.js'), 'utf8'
 
 test('snapshot air-writing UX keeps the camera visible and controls accessible', () => {
   assert.match(html, /id="airwriting-gesture-hud"/);
+  assert.match(html, /id="airwriting-drag-handle"/);
+  assert.match(html, /id="airwriting-minimize"/);
+  assert.match(html, /id="airwriting-minimized-pill"/);
+  assert.match(html, /id="airwriting-expand"/);
   assert.match(html, /data-gesture="draw"/);
   assert.match(html, /data-gesture="hover"/);
   assert.match(html, /data-gesture="erase"/);
+  assert.doesNotMatch(html, /[☝✌✋]/, 'gesture legend does not rely on emoji glyphs');
+  assert.equal((html.match(/<svg/g) || []).length >= 4, true, 'camera and gesture controls use inline SVG icons');
   assert.match(html, /id="airwriting-searching"/);
   assert.match(css, /\.airwriting-panel\[data-active="true"\] \.airwriting-preview-wrap[\s\S]*position: fixed/);
+  assert.match(css, /\.airwriting-preview-wrap\.minimized[\s\S]*\.airwriting-video[\s\S]*display: none/);
+  assert.match(css, /\.airwriting-minimized-pill[\s\S]*display: flex/);
   assert.match(css, /\.drawing-controls[\s\S]*position: sticky/);
+  assert.match(css, /\.gesture-status-bar[\s\S]*height: 22px[\s\S]*line-height: 22px/);
+  assert.match(css, /\.gesture-status-bar[\s\S]*overflow: hidden/);
+  assert.match(css, /\.gesture-badge[\s\S]*display: inline-flex[\s\S]*align-items: center[\s\S]*justify-content: center[\s\S]*gap: 4px/);
   assert.match(css, /\.gesture-badge-draw\.active[\s\S]*#4ade80/);
   assert.match(css, /\.gesture-badge-hover\.active[\s\S]*#60a5fa/);
   assert.match(css, /\.gesture-badge-erase\.active[\s\S]*#fb923c/);
   assert.match(camera, /settings\.onModeChange\(classified\.mode, classified\)/);
   assert.match(snapshot, /onModeChange: \(_mode, classified\) => setGestureHud\(classified\?\.mode/);
+  assert.match(snapshot, /airwritingDragHandle\?\.addEventListener\('mousedown'/);
+  assert.match(snapshot, /window\.addEventListener\('mousemove', movePreview\)/);
+  assert.match(snapshot, /window\.addEventListener\('mouseup', stopPreviewDrag\)/);
+  assert.match(snapshot, /classList\.toggle\('minimized', value\)/);
+  assert.match(snapshot, /airwritingSearching\.style\.opacity/);
   assert.match(html, /Searching for hand/);
 });
