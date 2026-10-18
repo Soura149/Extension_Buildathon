@@ -99,6 +99,14 @@ test('capture failures restore live work; failed workspace opening deletes only 
   }
 });
 
+test('capture failures preserve the specific error message', async () => {
+  const env = background();
+  env.faults.message = true;
+  const result = await env.request();
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'Disconnected');
+});
+
 test('tab switches and navigation during capture reject and still restore the overlay', async () => {
   const env = background();
   env.faults.query = (number) => number === 3 ? { id: 99 } : {};

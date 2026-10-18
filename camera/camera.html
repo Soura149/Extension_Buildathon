@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AirWrite Camera Test</title>
+  <link rel="stylesheet" href="camera.css">
+</head>
+<body>
+  <main class="camera-page">
+    <header>
+      <p class="eyebrow">AirWrite · Phase E</p>
+      <h1>Camera tracking test</h1>
+      <p class="local-copy">Camera frames are processed locally in this extension page. Nothing is uploaded or saved.</p>
+    </header>
+
+    <section class="controls" aria-label="Camera controls">
+      <button id="start-camera" type="button">Start Camera</button>
+      <button id="stop-camera" type="button" class="secondary">Stop Camera</button>
+      <p class="state-line">State: <strong id="camera-state" data-state="Camera off">Camera off</strong></p>
+      <p id="camera-error" class="error" role="alert"></p>
+    </section>
+
+    <section class="preview-card" aria-label="Camera preview and fingertip calibration area">
+      <div id="calibration-area" class="calibration-area">
+        <video id="camera-video" autoplay muted playsinline aria-label="Local camera preview"></video>
+        <div class="calibration-grid" aria-hidden="true"></div>
+        <div id="fingertip-cursor" class="fingertip-cursor" hidden aria-label="Fingertip cursor"></div>
+        <p class="calibration-label">Fingertip calibration area</p>
+      </div>
+    </section>
+
+  <p class="adapter-note">MediaPipe Hand Landmarker runs locally from packaged extension assets. Camera frames are not uploaded or stored.</p>
+  </main>
+  <script src="hand-tracking.js"></script>
+  <script src="../vendor/mediapipe/vision_bundle.js"></script>
+  <script src="mediapipe-adapter.js"></script>
+  <script src="camera.js"></script>
+</body>
+</html>

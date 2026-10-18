@@ -20,6 +20,13 @@
     saveState: byId('save-state'),
     status: byId('workspace-status'),
     actionError: byId('action-error'),
+    airwritingPanel: document.querySelector('.airwriting-panel'),
+    airwritingStart: byId('airwriting-start'),
+    airwritingStop: byId('airwriting-stop'),
+    airwritingState: byId('airwriting-state'),
+    airwritingError: byId('airwriting-error'),
+    airwritingVideo: byId('airwriting-video'),
+    airwritingCursor: byId('airwriting-cursor'),
     controls: byId('drawing-controls'),
     pen: byId('tool-pen'),
     eraser: byId('tool-eraser'),
@@ -55,6 +62,9 @@
     pageActive: true,
     objectUrls: new Set(),
     revokeTimers: new Set()
+    ,camera: null
+    ,cameraDrawing: false
+    ,cameraStrokePoints: 0
   };
 
   function signature(title, strokes) {
@@ -93,6 +103,75 @@
   function showActionError(message, error) {
     ui.actionError.textContent = message + errorDetail(error);
     ui.actionError.hidden = false;
+  }
+
+  function setAirwritingState(value, detail = '') {
+    ui.airwritingState.textContent = value;
+    ui.airwritingState.dataset.state = value;
+    ui.airwritingError.textContent = value === 'Error' ? detail : '';
+    ui.airwritingPanel.dataset.active = String(value !== 'Camera off');
+    const active = value !== 'Camera off' && value !== 'Error';
+    ui.airwritingStart.disabled = active || !state.ready || state.operation !== null;
+    ui.airwritingStop.disabled = !active;
+  }
+
+  function imagePoint(normalized) {
+    return { x: normalized.x * state.imageWidth, y: normalized.y * state.imageHeight };
+  }
+
+  function endCameraStroke(reason, cancel = false) {
+    if (!state.cameraDrawing || !state.engine) return;
+    state.cameraDrawing = false;
+    state.cameraStrokePoints = 0;
+    if (cancel) state.engine.cancelStroke();
+    else state.engine.finishStroke();
+    ui.airwritingCursor.dataset.drawing = 'false';
+    refreshContent();
+    if (reason === 'tracking-lost') setStatus('Hand lost. The air-writing stroke was safely ended.');
+  }
+
+  function stopCamera(reason = 'camera-stopped') {
+    state.camera?.stop(reason);
+    endCameraStroke(reason, reason === 'mouse-started' || reason === 'camera-error');
+    ui.airwritingCursor.hidden = true;
+  }
+
+  function initializeAirwriting() {
+    if (state.camera || !globalThis.AirWriteCamera?.createCameraController) return;
+    state.camera = globalThis.AirWriteCamera.createCameraController({
+      elements: {
+        video: ui.airwritingVideo,
+        start: ui.airwritingStart,
+        stop: ui.airwritingStop,
+        state: ui.airwritingState,
+        error: ui.airwritingError,
+        cursor: ui.airwritingCursor
+      },
+      tracker: globalThis.AirWriteLocalHandTracker,
+      mirror: true,
+      smoothing: 0.35,
+      onStateChange: (value, detail) => {
+        setAirwritingState(value, detail);
+        if (value === 'Camera off' || value === 'Error') ui.airwritingCursor.hidden = true;
+      },
+      onStartStroke: (point) => {
+        if (!canEdit() || state.pointerId !== null || state.cameraDrawing) return false;
+        const mapped = imagePoint(point);
+        state.cameraDrawing = true;
+        state.cameraStrokePoints = 1;
+        state.engine.beginStroke(mapped.x, mapped.y);
+        ui.airwritingCursor.dataset.drawing = 'true';
+        return true;
+      },
+      onPoint: (point) => {
+        if (!state.cameraDrawing || !canEdit()) return;
+        const mapped = imagePoint(point);
+        state.engine.continueStroke(mapped.x, mapped.y);
+        state.cameraStrokePoints += 1;
+      },
+      onEndStroke: ({ reason }) => endCameraStroke(reason, false)
+    });
+    setAirwritingState(state.camera.state);
   }
 
   function refreshControls() {
@@ -203,6 +282,7 @@
       return;
     }
     event.preventDefault();
+    if (state.cameraDrawing) stopCamera('mouse-started');
     ui.canvas.focus({ preventScroll: true });
     try {
       ui.canvas.setPointerCapture(event.pointerId);
@@ -298,6 +378,7 @@
       return;
     }
     cancelActiveStroke();
+    stopCamera('history-change');
     state.engine[action]();
     refreshContent();
     setStatus(hasUnsavedChanges() ? 'Unsaved changes. Save Note to keep them.' : 'All changes are saved locally.');
@@ -318,6 +399,7 @@
       return;
     }
     finishActiveStroke();
+    stopCamera('save');
     clearActionError();
     ui.title.value = ui.title.value.trim() || 'Untitled note';
     const strokes = state.engine.getStrokes();
@@ -401,6 +483,7 @@
       return;
     }
     finishActiveStroke();
+    stopCamera('export');
     clearActionError();
     state.exporting = true;
     refreshControls();
@@ -459,6 +542,7 @@
       return;
     }
     finishActiveStroke();
+    stopCamera('discard');
     const draftToDelete = state.noteId === null ? state.draftId : null;
     if (hasUnsavedChanges() || draftToDelete !== null) {
       const message = state.noteId !== null
@@ -534,6 +618,7 @@
   });
 
   window.addEventListener('beforeunload', (event) => {
+    stopCamera('page-unload');
     if (!state.allowLeave && (hasUnsavedChanges() || state.operation !== null)) {
       event.preventDefault();
       event.returnValue = '';
@@ -541,6 +626,7 @@
   });
   window.addEventListener('pagehide', () => {
     state.pageActive = false;
+    stopCamera('page-hidden');
     cancelActiveStroke();
     for (const timer of state.revokeTimers) {
       window.clearTimeout(timer);
@@ -639,6 +725,7 @@
       state.currentSignature = signature(ui.title.value, state.engine.getStrokes());
       state.savedSignature = state.noteId === null ? null : state.currentSignature;
       state.ready = true;
+      initializeAirwriting();
       ui.loading.hidden = true;
       ui.workspace.setAttribute('aria-busy', 'false');
       refreshControls();

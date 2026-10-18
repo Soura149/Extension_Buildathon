@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
 
 const root = path.resolve(__dirname, '..');
 const requiredFiles = [
@@ -22,6 +23,15 @@ const requiredFiles = [
   'notes/notes.html',
   'notes/notes.css',
   'notes/notes.js',
+  'camera/camera.html',
+  'camera/camera.css',
+  'camera/camera.js',
+  'camera/hand-tracking.js',
+  'camera/mediapipe-adapter.js',
+  'vendor/mediapipe/vision_bundle.js',
+  'vendor/mediapipe/hand_landmarker.task',
+  'vendor/mediapipe/README.md',
+  'vendor/mediapipe/SHA256SUMS.txt',
   '.nvmrc',
   'package-lock.json',
   'README.md',
@@ -34,6 +44,13 @@ for (const relativePath of requiredFiles) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Missing required file: ${relativePath}`);
   }
+}
+
+const checksumFile = path.join(root, 'vendor/mediapipe/SHA256SUMS.txt');
+for (const line of fs.readFileSync(checksumFile, 'utf8').trim().split(/\r?\n/)) {
+  const [expected, relativePath] = line.trim().split(/\s+/, 2);
+  const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, relativePath))).digest('hex');
+  if (actual !== expected) throw new Error(`MediaPipe asset checksum mismatch: ${relativePath}`);
 }
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
@@ -54,13 +71,13 @@ if (JSON.stringify([...(manifest.permissions || [])].sort()) !== JSON.stringify(
 }
 
 const javascriptFiles = ['background.js'];
-for (const directory of ['popup', 'content', 'snapshot', 'storage', 'notes']) {
+for (const directory of ['popup', 'content', 'snapshot', 'storage', 'notes', 'camera']) {
   for (const file of fs.readdirSync(path.join(root, directory))) {
     if (file.endsWith('.js')) javascriptFiles.push(`${directory}/${file}`);
   }
 }
 
-for (const html of ['popup/popup.html', 'snapshot/snapshot.html', 'notes/notes.html']) {
+for (const html of ['popup/popup.html', 'snapshot/snapshot.html', 'notes/notes.html', 'camera/camera.html']) {
   const text = fs.readFileSync(path.join(root, html), 'utf8');
   for (const match of text.matchAll(/(?:src|href)="([^"?#]+\.(?:js|css))"/g)) {
     if (!fs.existsSync(path.resolve(root, path.dirname(html), match[1]))) {

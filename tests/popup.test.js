@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function popup({ unavailable = false } = {}) {
-  const nodes = Object.fromEntries(['status', 'toggle-overlay', 'capture-snapshot', 'saved-notes'].map((id) => [id, {
+  const nodes = Object.fromEntries(['status', 'toggle-overlay', 'capture-snapshot', 'saved-notes', 'camera-test'].map((id) => [id, {
     disabled: false, dataset: {}, listeners: {}, addEventListener(type, callback) { this.listeners[type] = callback; }
   }]));
   const messages = [];
@@ -47,6 +47,8 @@ test('popup capture is user-initiated, carries tab identity, and leaves notes ac
   assert.equal(blocked.nodes['toggle-overlay'].disabled, true);
   await blocked.nodes['saved-notes'].listeners.click();
   assert.match(blocked.messages.at(-1).url, /notes\/notes.html$/);
+  await blocked.nodes['camera-test'].listeners.click();
+  assert.match(blocked.messages.at(-1).url, /camera\/camera.html$/);
 });
 
 test('popup reports failed responses instead of showing false success and reenables controls', async () => {

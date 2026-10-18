@@ -273,7 +273,14 @@ async function main() {
     assert.ok(await shadow("return this.querySelector('[data-mode-indicator]').getBoundingClientRect().width > 0;"));
     await connection.send('Page.navigate', { url: `${extension}/snapshot/snapshot.html?note=missing` }, session);
     await waitFor(() => connection.evaluate(session, 'document.querySelector("#error-state")?.hidden === false'), 'missing-note error');
-    console.log('Chrome smoke passed: real IndexedDB/local storage, pointer drawing, eraser/export pixels, resize/reopen, rename/delete/discard, missing-note errors, Trusted Types injection, Browse hit testing, hide/show, and collapsed mode indicator.');
+    await connection.send('Page.navigate', { url: `${extension}/camera/camera.html` }, session);
+    await waitFor(() => connection.evaluate(session, 'typeof Vision === "object" && typeof AirWriteLocalHandTracker === "object" && document.querySelector("#camera-state")?.textContent === "Camera off"'), 'camera test page');
+    const cameraAssets = await connection.evaluate(session, '({ vision: typeof Vision, tracker: typeof AirWriteLocalHandTracker, state: document.querySelector("#camera-state").textContent, startDisabled: document.querySelector("#start-camera").disabled, scripts: [...document.scripts].map((script) => script.src), error: document.querySelector("#camera-error").textContent })');
+    assert.equal(cameraAssets.vision, 'object', JSON.stringify(cameraAssets));
+    assert.equal(cameraAssets.tracker, 'object');
+    assert.equal(cameraAssets.state, 'Camera off');
+    assert.equal(cameraAssets.startDisabled, false);
+    console.log('Chrome smoke passed: real IndexedDB/local storage, pointer drawing, eraser/export pixels, resize/reopen, rename/delete/discard, missing-note errors, Trusted Types injection, Browse hit testing, hide/show, collapsed mode indicator, and packaged camera assets/state.');
     console.log('Capture permission/user-gesture flow and actual download prompts still require the manual Chrome checklist.');
   } finally {
     if (connection) {

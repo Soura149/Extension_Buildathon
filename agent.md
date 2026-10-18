@@ -334,11 +334,11 @@ b0e17a1 feat: build AirWrite annotation overlay MVP
 
 ## Current limitations
 
-The following are intentionally not implemented yet:
+The following are intentionally not implemented or not release-verified yet:
 
-- Webcam camera page and MediaPipe hand-landmark tracking.
-- Pinch-to-draw air-writing input.
-- Camera calibration and camera status states.
+- Live Overlay webcam input.
+- Physical-camera manual verification: permission outcomes, pinch quality,
+  calibration/lighting, performance, and camera indicator behavior.
 - Persistence of Live Overlay drawings across source-page refreshes.
 - Full-page scrolling capture.
 - Autosave of unsaved snapshot edits and collaborative note merging.
@@ -353,13 +353,12 @@ restart persistence, and Google/YouTube checks still need manual verification.
 2. Load the repository folder through Chrome's **Load unpacked** option at
    `chrome://extensions`.
 3. Open an ordinary HTTP(S) webpage.
-4. Complete `tests/manual-checklist.md` for Live Overlay, capture/export, and
-   saved notes before starting webcam work.
-5. For updated roadmap Phase E, first create a separate camera demo that requests
-   permission only after user action and displays clear camera status.
-6. Keep hand tracking separate from the content script and adapt hand input to
-   the existing `beginStroke`, `continueStroke`, and `finishStroke` behavior.
-7. Keep the Phase D storage contract documented in `storage/README.md`; preserve
+4. Complete `tests/manual-checklist.md` for Live Overlay, capture/export, saved
+   notes, and the experimental camera flow.
+5. Keep Phase E hand tracking separate from the content script and route camera
+   input through the shared Snapshot Canvas `beginStroke`, `continueStroke`, and
+   `finishStroke` behavior.
+6. Keep the Phase D storage contract documented in `storage/README.md`; preserve
    editable stroke data separately from screenshot blobs.
 
 Do not remove the mouse drawing path when adding webcam input; the plan
@@ -461,6 +460,9 @@ Snapshot Canvas capture.
   now includes Node behavior tests, not just manifest/syntax validation.
 - Added drawing/coordinate, capture lifecycle/failure, popup, storage/readback,
   notes UI, and safe URL/object-URL regressions under `tests/`.
+- Vendored the pinned MediaPipe Hand Landmarker JavaScript/WASM runtime and
+  float16 model under `vendor/mediapipe/`, with SHA-256 verification in the
+  offline validator. No runtime CDN or model fetch is required.
 - `scripts/browser-smoke.js` (`npm run test:browser` with `CHROME_PATH`) loads
   the real unpacked extension in a disposable Chrome profile. It uses a local
   deterministic fixture, real pointer input, IndexedDB/Chrome storage, eraser/
@@ -473,6 +475,11 @@ Snapshot Canvas capture.
 - The quota pass added a real 50 MiB accounting test (including editable stroke
   bytes), the 90% warning flag, cap-preserving failed replacement behavior, and
   real-Chrome verification that saved screenshot Blobs read back as WebP/JPEG.
+- Phase E unit coverage now includes relative pinch thresholds, hysteresis,
+  smoothing/clamping, permission/lifecycle states, tracking-loss cleanup, and
+  rejection of camera input while a mouse stroke is active. The real-Chrome
+  smoke checks the packaged MediaPipe bundle/model page loads without requesting
+  camera permission on page open; physical camera use remains manual.
 - README, active roadmap, and manual checklist now distinguish implemented code,
   automated evidence, and pending browser release checks.
 
@@ -480,7 +487,7 @@ Final commands/results from the repository root:
 
 ```text
 npm ci                         passed
-npm test                       passed: 9 extension JS files validated, 30 tests
+npm test                       passed: 12 extension JS files validated, 37 tests
 node --check scripts/browser-smoke.js   passed
 npm run test:browser            passed with installed Chrome and CHROME_PATH
 git diff --check               passed (only Git line-ending warnings)
@@ -503,3 +510,63 @@ next capture. Two editors of one note follow last successful save wins. Storage
 failures can leave unused staged payloads because IndexedDB and Chrome storage
 cannot commit atomically; errors must stay visible and must not clear the draft.
 Preserve the unrelated pre-existing `reasoning.md`; it was not read or modified.
+
+## Latest session — Phase E experimental air-writing (2026-10-18)
+
+### Implemented
+
+- Added `camera/camera.html` and `camera/camera.css` as a separate opt-in camera
+  test page. It shows Camera off, permission, ready, hand, drawing, tracking-lost,
+  and error states; no camera request happens on page load.
+- Added `camera/hand-tracking.js` pure helpers for normalized landmarks, relative
+  thumb/index pinch ratio, hysteresis, smoothing, mirroring, clamping, and safe
+  malformed/lost-frame classification.
+- Added `camera/camera.js` lifecycle controller. `getUserMedia({ video: true,
+  audio: false })` is called only from the Start button handler. The controller
+  requests no microphone, caps inference to the requestAnimationFrame loop, ends
+  strokes on release/lost tracking, and stops tracks on Stop, error, and pagehide.
+- Added `camera/mediapipe-adapter.js` using the locally packaged MediaPipe Hand
+  Landmarker with CPU delegate, one hand, VIDEO mode, and local model/WASM paths.
+- Vendored `vendor/mediapipe/vision_bundle.js`, WASM runtimes, and the selected
+  float16 `hand_landmarker.task`. `vendor/mediapipe/SHA256SUMS.txt` is checked by
+  `scripts/validate-project.js`; `vendor/mediapipe/README.md` records Apache-2.0
+  package/model provenance and the update procedure. No runtime CDN/model fetch
+  or runtime npm dependency remains. The extension CSP adds only
+  `wasm-unsafe-eval` for packaged MediaPipe WASM.
+- Added experimental Snapshot Canvas Air-writing UI. A local fingertip cursor is
+  mapped from normalized camera coordinates to original screenshot pixels;
+  pinch starts a shared-engine stroke, release/tracking loss ends it, and the
+  camera is stopped before save/export/discard/leave. Existing mouse/touch input
+  remains available and takes priority over a camera stroke.
+- Added Popup **Camera Test** entry point and manual Phase E checks.
+
+### Verification
+
+```text
+npm ci                         passed
+npm test                       passed: 12 extension JS files validated, 37 tests
+node --check camera/*.js       passed
+npm run test:browser            passed with installed Chrome
+git diff --check               passed (Git reports only line-ending warnings)
+```
+
+The real-Chrome smoke now confirms the packaged MediaPipe bundle/model page
+loads, the camera page remains Camera off without an automatic permission
+request, and the previous editor/storage/overlay checks still pass. It does not
+grant/use a physical camera, test hand landmarks, or prove OS permission and
+performance behavior.
+
+### Explicit remaining gaps
+
+- Complete the manual camera checks using a real camera: permission denial/grant,
+  tracker initialization, pinch drawing, hand loss, lighting, false pinches,
+  track shutdown, CPU latency, and camera indicator behavior.
+- Confirm MediaPipe package/model license and privacy terms for the buildathon's
+  submission rules; the vendored asset README intentionally does not claim that
+  review is complete.
+- Live Overlay camera input is not implemented. Phase E intentionally starts on
+  Snapshot Canvas to avoid content-script/page interaction risks. Do not add
+  camera frames to runtime messaging or note storage.
+- The prior popup capture/download/restart and Google/YouTube manual checks also
+  remain release-gate work. Keep air-writing visibly experimental until these
+  checks pass.

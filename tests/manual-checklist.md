@@ -97,6 +97,38 @@ Reload the extension and refresh the source webpage before testing.
 - [ ] DevTools shows no screenshot upload or remote script fetch. Only `activeTab`
       and `storage` permissions are requested; camera is not requested.
 
+## Phase E — Experimental webcam air-writing
+
+Complete the separate **Camera Test** page before using a saved note. These
+checks require a real camera and should not be marked complete from Node tests.
+
+- [ ] Opening the popup, Camera Test, or Snapshot Canvas does not request camera
+      permission. No microphone permission is requested.
+- [ ] **Camera Test → Start Camera** requests permission only after the click and
+      shows the packaged local MediaPipe tracker states.
+- [ ] Camera denial, missing camera, busy camera, and tracker/model failure show
+      a clear recoverable Error state; mouse/snapshot editing remains usable.
+- [ ] Stop Camera stops every media track, hides the preview/cursor, and returns
+      to Camera off. Repeat Stop is harmless. Pagehide also stops tracks.
+- [ ] Snapshot **Start Air-writing** shows the local mirrored preview and visible
+      fingertip cursor. The source page and screenshot are not modified.
+- [ ] Index fingertip movement moves the snapshot cursor and maps to the original
+      image coordinate system, including near calibration-area edges.
+- [ ] Pinching thumb and index starts one annotation stroke; release ends it.
+      Hysteresis prevents rapid on/off chatter near the pinch threshold.
+- [ ] Losing the hand safely ends the current stroke without a connecting line
+      when the hand returns. Status reports Tracking lost.
+- [ ] Existing Pen/Eraser, colour, width, undo, redo, clear, Save, Export,
+      Discard, and mouse/touch drawing remain usable before, during, and after
+      camera use. A mouse stroke takes priority over camera start.
+- [ ] Stop camera before save/discard/leave. Reopen a saved note and verify its
+      storage contains only screenshot/strokes, never video frames or landmarks.
+- [ ] DevTools Network shows no camera-frame upload and no remote script/model
+      request; all MediaPipe/WASM/model resources load from `chrome-extension://`.
+- [ ] Test different lighting, hand sizes/orientations, backgrounds, false
+      pinches, hand loss, CPU load, and camera performance before calling this
+      experimental capability release ready.
+
 ## Automated evidence
 
 `npm test` runs offline mocked regressions. `npm run test:browser` uses a local

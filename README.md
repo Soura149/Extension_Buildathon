@@ -26,6 +26,9 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 - **Save Note**, **Export Image PNG**, and confirmed **Discard** actions.
 - **Saved Notes** with source-screenshot thumbnails, titles, source links,
   creation dates, editable reopen, rename, and confirmed delete.
+- Experimental Snapshot Canvas air-writing using a packaged local MediaPipe Hand
+  Landmarker: fingertip cursor, pinch-to-draw, smoothing, tracking-loss stroke
+  termination, and camera stop cleanup.
 - Original screenshots and editable strokes are stored separately in IndexedDB;
   only small metadata is kept in `chrome.storage.local`.
 - Captured note images are normalized to WebP quality 0.82 (JPEG fallback) and
@@ -34,7 +37,8 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 
 ### Not implemented yet
 
-- Webcam air-writing.
+- Live Overlay webcam input; Snapshot Canvas air-writing remains experimental
+  until the manual camera and performance checks pass.
 - Full-page scrolling capture.
 - Live-overlay drawing persistence across page reloads (snapshot notes persist).
 - Cloud sync, collaboration, and annotation autosave.
@@ -82,12 +86,28 @@ test webpage. If the active page is restricted, the popup shows an explanation.
 6. Open **Saved Notes** from the popup or workspace to reopen, rename, or delete.
    Saved Notes remains accessible even from a restricted webpage.
 
+## Experimental air-writing
+
+Snapshot Canvas includes a clearly labelled **Experimental Air-writing** panel.
+It requests camera permission only after **Start Air-writing** or **Start Camera**
+is clicked. The packaged MediaPipe Hand Landmarker runs locally with a CPU
+delegate; no camera frames or hand landmarks are saved or uploaded. The index
+fingertip controls the visible cursor, and a thumb/index pinch starts a stroke.
+Releasing the pinch or losing tracking ends the current camera stroke safely.
+Mouse/touch drawing remains available and takes priority if it is already active.
+
+Use **Camera Test** in the popup first to inspect permission, camera, tracker,
+and stop states without opening a note. The model, WASM runtime, checksums, and
+attribution are under `vendor/mediapipe/`; no runtime CDN or model download is
+used.
+
 Unsaved edits trigger leave/discard warnings, subject to browser behavior. They
 are not autosaved. Temporary capture drafts expire after 24 hours when another
 capture is created; Save Note before closing/reloading to retain your edits.
 Saved notes use browser-local extension storage and can be lost if extension
 data is cleared, storage is evicted, or the extension is removed. See
 `storage/README.md` for the versioned schema, quotas, and write-failure behavior.
+See `vendor/mediapipe/README.md` for camera asset provenance and updates.
 
 ## Test
 

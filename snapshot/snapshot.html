@@ -56,6 +56,24 @@
         </div>
         <p id="action-error" class="action-error" role="alert" hidden></p>
 
+        <section class="airwriting-panel" aria-labelledby="airwriting-heading">
+          <div class="airwriting-copy">
+            <span class="experimental-badge">Experimental</span>
+            <h2 id="airwriting-heading">Air-writing</h2>
+            <p>Use your index fingertip as the cursor. Pinch thumb and index finger to draw. Mouse and touch remain available.</p>
+          </div>
+          <div class="airwriting-actions">
+            <button id="airwriting-start" type="button">Start Air-writing</button>
+            <button id="airwriting-stop" class="secondary" type="button" disabled>Stop Camera</button>
+            <span id="airwriting-state" class="airwriting-state" data-state="Camera off">Camera off</span>
+          </div>
+          <p id="airwriting-error" class="action-error" role="alert"></p>
+          <div class="airwriting-preview-wrap">
+            <video id="airwriting-video" class="airwriting-video" autoplay muted playsinline aria-label="Local air-writing camera preview"></video>
+            <p class="airwriting-local">Local processing only · no camera frames are saved or uploaded.</p>
+          </div>
+        </section>
+
         <fieldset id="drawing-controls" class="drawing-controls" disabled>
           <legend class="visually-hidden">Drawing controls</legend>
           <div class="control-group" role="group" aria-label="Drawing tool">
@@ -87,6 +105,7 @@
           <div id="image-stack" class="image-stack">
             <img id="screenshot" class="screenshot" alt="Captured webpage" draggable="false">
             <canvas id="annotation-canvas" class="annotation-canvas" tabindex="0" aria-label="Screenshot annotation canvas" aria-describedby="canvas-help" aria-disabled="true">Your browser needs Canvas support to annotate this screenshot.</canvas>
+            <span id="airwriting-cursor" class="airwriting-cursor" hidden aria-hidden="true"></span>
           </div>
         </div>
         <p class="workspace-hint">Saved notes keep the original screenshot and editable strokes on this device. Export downloads a flattened PNG; it does not save a note.</p>
@@ -95,6 +114,10 @@
     <noscript><p class="state-panel">Enable JavaScript to open and annotate a snapshot.</p></noscript>
     <script src="../storage/notes.js"></script>
     <script src="../content/canvas.js"></script>
+    <script src="../camera/hand-tracking.js"></script>
+    <script src="../vendor/mediapipe/vision_bundle.js"></script>
+    <script src="../camera/mediapipe-adapter.js"></script>
+    <script src="../camera/camera.js"></script>
     <script src="snapshot.js"></script>
   </body>
 </html>

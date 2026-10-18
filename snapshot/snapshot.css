@@ -266,6 +266,33 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.airwriting-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+  align-items: center;
+  margin: 16px 0 0;
+  border: 1px solid #d9d2f8;
+  border-radius: 12px;
+  padding: 14px;
+  background: #faf9ff;
+}
+
+.airwriting-copy h2 { margin: 4px 0; font-size: 16px; }
+.airwriting-copy p { margin: 0; color: #596274; font-size: 12px; line-height: 1.5; }
+.experimental-badge { color: #4939c2; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.airwriting-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.airwriting-actions button { min-height: 36px; padding-block: 7px; }
+.airwriting-actions .secondary { background: #fff; }
+.airwriting-state { align-self: center; color: #596274; font-size: 12px; font-weight: 700; }
+.airwriting-state[data-state="Drawing"] { color: #22634a; }
+.airwriting-state[data-state="Error"], .airwriting-state[data-state="Tracking lost"] { color: #92253a; }
+.airwriting-panel > .action-error { grid-column: 1 / -1; margin: 0; }
+.airwriting-preview-wrap { grid-column: 1 / -1; display: none; position: relative; max-width: 320px; }
+.airwriting-panel[data-active="true"] .airwriting-preview-wrap { display: block; }
+.airwriting-video { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: #1d2330; object-fit: cover; transform: scaleX(-1); }
+.airwriting-local { margin: 5px 0 0; color: #596274; font-size: 11px; }
+
 .drawing-controls {
   display: flex;
   align-items: center;
@@ -416,6 +443,20 @@ h1 {
   cursor: wait;
 }
 
+.airwriting-cursor {
+  position: absolute;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border: 3px solid #5b4bdb;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 65%);
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 80%), 0 2px 8px rgb(29 35 48 / 30%);
+  pointer-events: none;
+}
+.airwriting-cursor[data-drawing="true"] { border-color: #e02b4d; background: rgb(255 59 48 / 35%); }
+
 .workspace-hint {
   margin: 14px 0 0;
   color: #596274;
@@ -448,6 +489,9 @@ h1 {
   .note-details {
     width: 100%;
   }
+
+  .airwriting-panel { grid-template-columns: 1fr; }
+  .airwriting-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 560px) {

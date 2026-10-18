@@ -38,13 +38,17 @@ The existing repository already includes the following. **Do not rebuild these f
   editable saved notes, and a Saved Notes list with rename/delete.
 - Phase D quota: captured note images are WebP quality 0.82 (JPEG fallback),
   total saved-note accounting has a 50 MiB hard cap, and usage warnings begin at 90%.
+- Phase E implementation: a packaged local MediaPipe Hand Landmarker adapter,
+  standalone Camera Test page, and experimental Snapshot Canvas fingertip/pinch input.
 - Offline behavior tests and an optional real-Chrome editor/storage smoke check.
 
 ### Known limitations
 
 - Live Overlay drawings disappear after refreshing or navigating away; saved snapshot notes persist locally.
 - Snapshot edits are not autosaved. Temporary captures expire after 24 hours when another capture is created.
-- Webcam hand tracking and air-writing are not implemented.
+- Live Overlay webcam input is not implemented; Phase E starts with Snapshot Canvas.
+- Real camera permission, lighting, performance, model-license/privacy, and no-network
+  manual checks remain required before webcam air-writing is release-ready.
 - The actual popup capture permission gesture, download prompts, browser restart,
   and Google/YouTube manual checks are still pending; automated editor tests do not prove these.
 - Some browser-internal and restricted pages cannot be injected into; this is expected.
@@ -398,8 +402,8 @@ Follow the event's current rules about permitted generative AI tools, open-sourc
 ## Current milestone
 
 **Phase C + Phase D are implemented with offline regression coverage and real-Chrome
-editor/storage smoke coverage. Complete the remaining manual Live Overlay, popup
-capture, download, and restart checks in `tests/manual-checklist.md` before calling
-these phases browser-verified or starting Phase E webcam tracking.**
+editor/storage smoke coverage. Phase E now has a local model/tracker and Snapshot
+Canvas integration, but remains experimental until the manual camera, privacy,
+performance, and popup/capture release checks in `tests/manual-checklist.md` pass.**
 
 Do not rebuild the canvas, toolbar, undo/redo, or eraser from scratch. Reuse the existing drawing engine.

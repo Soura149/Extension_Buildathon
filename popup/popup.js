@@ -3,6 +3,7 @@
   const toggleButton = document.querySelector('#toggle-overlay');
   const captureButton = document.querySelector('#capture-snapshot');
   const notesButton = document.querySelector('#saved-notes');
+  const cameraTestButton = document.querySelector('#camera-test');
 
   let activeTabId = null;
   let activeWindowId = null;
@@ -18,6 +19,7 @@
     toggleButton.disabled = activeTabId === null || busy;
     captureButton.disabled = activeTabId === null || busy;
     notesButton.disabled = busy;
+    cameraTestButton.disabled = busy;
     toggleButton.textContent = overlayVisible ? 'Hide overlay' : 'Enable overlay';
   }
 
@@ -88,6 +90,13 @@
       await chrome.tabs.create({ url: chrome.runtime.getURL('notes/notes.html') });
     } catch {
       setStatus('Saved Notes could not be opened. Reload AirWrite and try again.', true);
+    }
+  });
+  cameraTestButton.addEventListener('click', async () => {
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('camera/camera.html') });
+    } catch {
+      setStatus('Camera Test could not be opened. Reload AirWrite and try again.', true);
     }
   });
   toggleButton.addEventListener('click', toggleOverlay);

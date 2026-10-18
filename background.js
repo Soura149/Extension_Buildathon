@@ -75,9 +75,9 @@ importScripts('storage/notes.js');
       sendResponse({ ok: false, error: 'Capture must be started from the AirWrite popup.' });
       return false;
     }
-    capture(message).then(sendResponse, () => sendResponse({
+    capture(message).then(sendResponse, (error) => sendResponse({
       ok: false,
-      error: 'Capture failed. Keep the webpage active, refresh it after reloading AirWrite, and try again. Chrome may restrict capture or local storage may be full.'
+      error: error?.message || 'Capture failed. Keep the webpage active, refresh it after reloading AirWrite, and try again. Chrome may restrict capture or local storage may be full.'
     }));
     return true;
   });
