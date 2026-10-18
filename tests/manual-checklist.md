@@ -111,13 +111,18 @@ checks require a real camera and should not be marked complete from Node tests.
 - [ ] Stop Camera stops every media track, hides the preview/cursor, and returns
       to Camera off. Repeat Stop is harmless. Pagehide also stops tracks.
 - [ ] Snapshot **Start Air-writing** shows the local mirrored preview and visible
-      fingertip cursor. The source page and screenshot are not modified.
+      fingertip cursor. It initially asks for an open-hand arm pose; the source
+      page and screenshot are not modified.
 - [ ] Index fingertip movement moves the snapshot cursor and maps to the original
       image coordinate system, including near calibration-area edges.
-- [ ] Pinching thumb and index starts one annotation stroke; release ends it.
-      Hysteresis prevents rapid on/off chatter near the pinch threshold.
+- [ ] Hold one complete open hand visible until the state says Ready to draw;
+      starting the camera while already pinching does not create a mark.
+- [ ] Keep the index finger extended, then hold a thumb/index pinch briefly to
+      start one annotation stroke; release ends it. Geometry checks, debounce, and
+      hysteresis prevent random frames or threshold chatter from drawing.
 - [ ] Losing the hand safely ends the current stroke without a connecting line
-      when the hand returns. Status reports Tracking lost.
+      when the hand returns; the cursor resets and the open-hand arm pose is
+      required again. Status reports Tracking lost.
 - [ ] Existing Pen/Eraser, colour, width, undo, redo, clear, Save, Export,
       Discard, and mouse/touch drawing remain usable before, during, and after
       camera use. A mouse stroke takes priority over camera start.

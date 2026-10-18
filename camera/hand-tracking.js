@@ -24,6 +24,20 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
+  function distance3d(first, second) {
+    const a = pointFrom(first);
+    const b = pointFrom(second);
+    if (!a || !b) return 0;
+    const z = Number.isFinite(a.z) && Number.isFinite(b.z) ? a.z - b.z : 0;
+    return Math.hypot(a.x - b.x, a.y - b.y, z);
+  }
+
+  function median(values) {
+    const numbers = values.filter((value) => Number.isFinite(value) && value > 0).sort((a, b) => a - b);
+    if (!numbers.length) return 0;
+    return numbers[Math.floor(numbers.length / 2)];
+  }
+
   // Wrist-to-middle-MCP is stable enough for a relative pinch measurement and
   // does not depend on the camera's pixel dimensions.
   function handScale(landmarks) {
@@ -44,7 +58,7 @@
     }
     const size = Number(relativeScale);
     if (!pointFrom(thumbTip) || !pointFrom(indexTip) || !(size > 0)) return null;
-    return distance(thumbTip, indexTip) / size;
+    return distance3d(thumbTip, indexTip) / size;
   }
 
   function priorPinching(state) {
@@ -74,6 +88,19 @@
     const result = { x: old.x + (next.x - old.x) * alpha, y: old.y + (next.y - old.y) * alpha };
     if (Number.isFinite(next.z) && Number.isFinite(old.z)) result.z = old.z + (next.z - old.z) * alpha;
     return result;
+  }
+
+  function smoothPointWithLimit(previous, current, amount, maxJump) {
+    const next = pointFrom(current);
+    const old = pointFrom(previous);
+    if (!next || !old || !Number.isFinite(Number(maxJump)) || Number(maxJump) <= 0) {
+      return smoothPoint(previous, current, amount);
+    }
+    const limit = Number(maxJump);
+    const jump = Math.hypot(next.x - old.x, next.y - old.y);
+    if (jump <= limit) return smoothPoint(old, next, amount);
+    const scale = limit / jump;
+    return smoothPoint(old, { x: old.x + (next.x - old.x) * scale, y: old.y + (next.y - old.y) * scale }, amount);
   }
 
   function mapLandmarkToNormalizedPoint(landmark, options) {
@@ -111,6 +138,54 @@
     }));
   }
 
+  function fingerExtended(landmarks, mcp, pip, tip, scale) {
+    const wrist = landmarks[0];
+    const tipReach = distance3d(landmarks[tip], wrist);
+    const pipReach = distance3d(landmarks[pip], wrist);
+    const fingerLength = distance3d(landmarks[mcp], landmarks[tip]);
+    const proximalLength = distance3d(landmarks[mcp], landmarks[pip]);
+    return tipReach > pipReach * 1.04 && fingerLength > proximalLength * 1.12 &&
+      distance3d(landmarks[tip], landmarks[pip]) > scale * 0.03;
+  }
+
+  function measureHandGeometry(landmarks, options) {
+    if (!Array.isArray(landmarks) || landmarks.length < 21 || landmarks.some((point) => !pointFrom(point))) {
+      return { valid: false, indexExtended: false, openHand: false, armable: false, scale: 0, pinchRatio: null };
+    }
+    const settings = options || {};
+    const scale = median([
+      distance3d(landmarks[0], landmarks[9]),
+      distance3d(landmarks[5], landmarks[17]),
+      distance3d(landmarks[0], landmarks[5]),
+      distance3d(landmarks[0], landmarks[17])
+    ]);
+    const minimumScale = Number.isFinite(Number(settings.minimumScale)) ? Number(settings.minimumScale) : 0.06;
+    const indexExtended = scale >= minimumScale && fingerExtended(landmarks, 5, 6, 8, scale);
+    const extendedFingers = [
+      indexExtended,
+      fingerExtended(landmarks, 9, 10, 12, scale),
+      fingerExtended(landmarks, 13, 14, 16, scale),
+      fingerExtended(landmarks, 17, 18, 20, scale)
+    ].filter(Boolean).length;
+    // Keep the public ratio calibrated to the wrist-to-middle-MCP scale used by
+    // the controller while using the broader palm scale for posture checks.
+    const ratio = pinchRatio(landmarks, handScale(landmarks));
+    const pinchOn = Number.isFinite(Number(settings.pinchOn)) ? Number(settings.pinchOn) : 0.4;
+    const pinchOff = Number.isFinite(Number(settings.pinchOff)) ? Number(settings.pinchOff) : 0.62;
+    const pinchCandidate = indexExtended && ratio !== null && ratio <= pinchOn;
+    const armable = !pinchCandidate && (extendedFingers >= 3 || (indexExtended && ratio !== null && ratio >= pinchOff));
+    return {
+      valid: scale >= minimumScale,
+      scale,
+      pinchRatio: ratio,
+      indexExtended,
+      openHand: extendedFingers >= 3,
+      armable,
+      pinchCandidate,
+      extendedFingers
+    };
+  }
+
   function classifyFrame(frame, previous, options) {
     let previousState = previous;
     let settings = options || {};
@@ -121,16 +196,22 @@
     const landmarks = normalizeLandmarks(frame);
     const wasPinching = priorPinching(previousState);
     if (!landmarks || !landmarks[0] || !landmarks[4] || !landmarks[8] || !landmarks[9]) {
-      return { tracked: false, pinching: wasPinching, point: null, ratio: null, scale: 0, landmarks: null };
+      return { tracked: false, pinching: false, pinchCandidate: false, armable: false, point: null, ratio: null, scale: 0, landmarks: null };
     }
     const scale = handScale(landmarks);
     const ratio = pinchRatio(landmarks, scale);
-    if (!scale || ratio === null) {
-      return { tracked: false, pinching: wasPinching, point: null, ratio, scale, landmarks: null };
+    const geometry = measureHandGeometry(landmarks, settings);
+    if (!scale || ratio === null || !geometry.valid) {
+      return { tracked: false, pinching: false, pinchCandidate: false, armable: false, point: null, ratio, scale, landmarks: null };
     }
     return {
       tracked: true,
-      pinching: isPinching(ratio, wasPinching, settings),
+      pinching: geometry.indexExtended && isPinching(ratio, wasPinching, settings),
+      pinchCandidate: geometry.pinchCandidate,
+      armable: geometry.armable,
+      openHand: geometry.openHand,
+      indexExtended: geometry.indexExtended,
+      extendedFingers: geometry.extendedFingers,
       point: mapLandmarkToNormalizedPoint(landmarks[8], settings),
       ratio,
       scale,
@@ -141,11 +222,14 @@
   global.AirWriteHandTracking = {
     clamp,
     distance,
+    distance3d,
     handScale,
     pinchRatio,
     isPinching,
     smoothPoint,
+    smoothPointWithLimit,
     mapLandmarkToNormalizedPoint,
+    measureHandGeometry,
     classifyFrame,
     normalizeLandmarks
   };

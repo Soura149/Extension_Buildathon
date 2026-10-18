@@ -27,7 +27,8 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 - **Saved Notes** with source-screenshot thumbnails, titles, source links,
   creation dates, editable reopen, rename, and confirmed delete.
 - Experimental Snapshot Canvas air-writing using a packaged local MediaPipe Hand
-  Landmarker: fingertip cursor, pinch-to-draw, smoothing, tracking-loss stroke
+  Landmarker: fingertip cursor, open-hand arming, index-finger geometry checks,
+  debounced pinch-to-draw, bounded cursor smoothing, tracking-loss stroke
   termination, and camera stop cleanup.
 - Original screenshots and editable strokes are stored separately in IndexedDB;
   only small metadata is kept in `chrome.storage.local`.
@@ -91,10 +92,14 @@ test webpage. If the active page is restricted, the popup shows an explanation.
 Snapshot Canvas includes a clearly labelled **Experimental Air-writing** panel.
 It requests camera permission only after **Start Air-writing** or **Start Camera**
 is clicked. The packaged MediaPipe Hand Landmarker runs locally with a CPU
-delegate; no camera frames or hand landmarks are saved or uploaded. The index
-fingertip controls the visible cursor, and a thumb/index pinch starts a stroke.
-Releasing the pinch or losing tracking ends the current camera stroke safely.
-Mouse/touch drawing remains available and takes priority if it is already active.
+delegate; no camera frames or hand landmarks are saved or uploaded. First show
+one complete open hand inside the preview to arm the gesture. Then keep the
+index finger extended: its fingertip controls the visible cursor. Hold a
+thumb/index pinch for several frames to start a stroke, and release to stop.
+The index-finger geometry check, temporal debounce, and cursor jump limit prevent
+single-frame tracking noise from creating annotations. Losing tracking ends the
+current camera stroke and requires the open-hand pose again. Mouse/touch drawing
+remains available and takes priority if it is already active.
 
 Use **Camera Test** in the popup first to inspect permission, camera, tracker,
 and stop states without opening a note. The model, WASM runtime, checksums, and

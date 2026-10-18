@@ -149,7 +149,8 @@
       },
       tracker: globalThis.AirWriteLocalHandTracker,
       mirror: true,
-      smoothing: 0.35,
+      smoothing: 0.2,
+      maxPointJump: 0.18,
       onStateChange: (value, detail) => {
         setAirwritingState(value, detail);
         if (value === 'Camera off' || value === 'Error') ui.airwritingCursor.hidden = true;

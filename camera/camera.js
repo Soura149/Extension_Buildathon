@@ -7,6 +7,7 @@
     REQUESTING: 'Requesting permission',
     READY: 'Camera ready',
     HAND: 'Hand detected',
+    ARMING: 'Hold open hand to arm',
     DRAW: 'Ready to draw',
     DRAWING: 'Drawing',
     LOST: 'Tracking lost',
@@ -40,10 +41,17 @@
     let hadHand = false;
     let lastPoint = null;
     let trackingState = { pinching: false };
+    let armed = false;
+    let openFrames = 0;
+    let pinchFrames = 0;
+    let releaseFrames = 0;
     let tracker = settings.tracker || global.AirWriteLocalHandTracker || null;
     let currentState = STATES.OFF;
     let starting = false;
     let lifecycle = 0;
+    const armFrames = Math.max(1, Number(settings.armFrames) || 8);
+    const pinchStartFrames = Math.max(1, Number(settings.pinchStartFrames) || 3);
+    const pinchReleaseFrames = Math.max(1, Number(settings.pinchReleaseFrames) || 2);
 
     function setState(state, detail) {
       currentState = state;
@@ -65,6 +73,15 @@
       if (typeof settings.onEndStroke === 'function') settings.onEndStroke({ reason });
     }
 
+    function resetGesture() {
+      armed = false;
+      openFrames = 0;
+      pinchFrames = 0;
+      releaseFrames = 0;
+      trackingState = { pinching: false };
+      lastPoint = null;
+    }
+
     function stopTracks() {
       tracks().forEach((track) => {
         if (track && typeof track.stop === 'function') track.stop();
@@ -84,8 +101,7 @@
         elements.video.pause?.();
         elements.video.srcObject = null;
       }
-      lastPoint = null;
-      trackingState = { pinching: false };
+      resetGesture();
       setState(STATES.OFF);
     }
 
@@ -101,6 +117,7 @@
         elements.video.pause?.();
         elements.video.srcObject = null;
       }
+      resetGesture();
       setState(STATES.ERROR, error && error.message ? error.message : String(error));
     }
 
@@ -136,6 +153,7 @@
         if (!classified.tracked) {
           hideCursor();
           endStroke('tracking-lost');
+          resetGesture();
           if (hadHand) setState(STATES.LOST);
           nextFrame();
           return;
@@ -143,11 +161,33 @@
         const firstHand = !hadHand;
         hadHand = true;
         trackingState = classified;
-        const point = tracking.smoothPoint(lastPoint, classified.point, settings.smoothing ?? 0.35);
+        const point = typeof tracking.smoothPointWithLimit === 'function'
+          ? tracking.smoothPointWithLimit(lastPoint, classified.point, settings.smoothing ?? 0.2, settings.maxPointJump ?? 0.18)
+          : tracking.smoothPoint(lastPoint, classified.point, settings.smoothing ?? 0.2);
         lastPoint = point;
         showCursor(point);
+        if (!armed) {
+          if (classified.armable) {
+            openFrames += 1;
+            if (openFrames >= armFrames) {
+              armed = true;
+              pinchFrames = 0;
+              releaseFrames = 0;
+              setState(STATES.DRAW);
+            } else {
+              setState(STATES.ARMING);
+            }
+          } else {
+            openFrames = 0;
+            setState(STATES.ARMING);
+          }
+          nextFrame();
+          return;
+        }
         if (classified.pinching) {
-          if (!drawing) {
+          pinchFrames += 1;
+          releaseFrames = 0;
+          if (!drawing && pinchFrames >= pinchStartFrames) {
             const accepted = typeof settings.onStartStroke === 'function'
               ? settings.onStartStroke(point) !== false
               : true;
@@ -160,8 +200,10 @@
             setState(STATES.DRAW);
           }
         } else {
-          endStroke('pinch-released');
-          setState(firstHand ? STATES.HAND : STATES.DRAW);
+          pinchFrames = 0;
+          releaseFrames += 1;
+          if (drawing && releaseFrames >= pinchReleaseFrames) endStroke('pinch-released');
+          setState(drawing ? STATES.DRAWING : (firstHand ? STATES.HAND : STATES.DRAW));
         }
         nextFrame();
       }).catch((error) => fail(cameraError('The local hand tracker failed.', error)));
@@ -196,6 +238,7 @@
         if (typeof tracker.start === 'function') await tracker.start({ video: elements.video });
         if (attempt !== lifecycle) return;
         active = true;
+        resetGesture();
         hadHand = false;
         setState(STATES.READY);
         nextFrame();

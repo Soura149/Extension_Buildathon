@@ -60,7 +60,7 @@
           <div class="airwriting-copy">
             <span class="experimental-badge">Experimental</span>
             <h2 id="airwriting-heading">Air-writing</h2>
-            <p>Use your index fingertip as the cursor. Pinch thumb and index finger to draw. Mouse and touch remain available.</p>
+            <p>Show an open hand first to arm the tracker. Then keep your index finger extended; the cursor follows it. Hold a thumb-and-index pinch to draw and release to stop. Mouse and touch remain available.</p>
           </div>
           <div class="airwriting-actions">
             <button id="airwriting-start" type="button">Start Air-writing</button>
@@ -68,6 +68,7 @@
             <span id="airwriting-state" class="airwriting-state" data-state="Camera off">Camera off</span>
           </div>
           <p id="airwriting-error" class="action-error" role="alert"></p>
+          <p class="airwriting-help"><strong>Tips:</strong> keep your whole hand visible inside the preview, use steady lighting, and avoid starting with a pinch. After tracking is lost, show the open hand again to re-arm.</p>
           <div class="airwriting-preview-wrap">
             <video id="airwriting-video" class="airwriting-video" autoplay muted playsinline aria-label="Local air-writing camera preview"></video>
             <p class="airwriting-local">Local processing only · no camera frames are saved or uploaded.</p>

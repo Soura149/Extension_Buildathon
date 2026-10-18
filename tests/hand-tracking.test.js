@@ -15,6 +15,9 @@ function hand({ scale = 0.2, pinchDistance = 0.02, fingertip } = {}) {
   const landmarks = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
   landmarks[0] = { x: 0.2, y: 0.2 };
   landmarks[9] = { x: 0.2 + scale, y: 0.2 };
+  landmarks[5] = { x: 0.45, y: 0.5 };
+  landmarks[6] = { x: 0.48, y: 0.5 };
+  landmarks[7] = { x: 0.52, y: 0.5 };
   landmarks[4] = { x: 0.5, y: 0.5 };
   landmarks[8] = fingertip || { x: 0.5 + pinchDistance, y: 0.5 };
   return landmarks;
@@ -65,6 +68,24 @@ test('normalizes MediaPipe detectForVideo nested hand landmarks', () => {
   assert.equal(tracking.classifyFrame({ landmarks: [landmarks] }).tracked, true);
 });
 
+test('pinch geometry rejects a curled or collapsed index finger', () => {
+  const tracking = loadCameraModules().AirWriteHandTracking;
+  const curled = hand({ pinchDistance: 0.01 });
+  curled[6] = { x: 0.56, y: 0.5 };
+  curled[7] = { x: 0.54, y: 0.5 };
+  const geometry = tracking.measureHandGeometry(curled);
+  assert.equal(geometry.indexExtended, false);
+  assert.equal(geometry.pinchCandidate, false);
+  assert.equal(tracking.classifyFrame({ landmarks: curled }).pinching, false);
+});
+
+test('cursor smoothing limits a discontinuous jump', () => {
+  const { smoothPointWithLimit } = loadCameraModules().AirWriteHandTracking;
+  const point = smoothPointWithLimit({ x: 0.2, y: 0.2 }, { x: 0.9, y: 0.9 }, 1, 0.1);
+  assert.ok(point.x < 0.28);
+  assert.ok(point.y < 0.28);
+});
+
 function cameraElements() {
   return {
     video: {
@@ -107,7 +128,10 @@ test('camera controller transitions through permission, hand, drawing and tracki
     tracker,
     onStateChange: (state) => events.push(state),
     onStartStroke: () => events.push('stroke-start'),
-    onEndStroke: ({ reason }) => events.push(`stroke-end:${reason}`)
+    onEndStroke: ({ reason }) => events.push(`stroke-end:${reason}`),
+    armFrames: 1,
+    pinchStartFrames: 1,
+    pinchReleaseFrames: 1
   });
 
   assert.equal(controller.state, 'Camera off');
@@ -118,7 +142,7 @@ test('camera controller transitions through permission, hand, drawing and tracki
   assert.equal(controller.state, 'Camera ready');
   queue.shift()(1);
   await Promise.resolve();
-  assert.equal(controller.state, 'Hand detected');
+  assert.equal(controller.state, 'Ready to draw');
   queue.shift()(2);
   await Promise.resolve();
   assert.equal(controller.state, 'Drawing');
@@ -164,8 +188,52 @@ test('camera controller does not steal an active mouse stroke when camera drawin
   await elements.start.listeners.click();
   queue.shift()(1);
   await Promise.resolve();
-  assert.equal(controller.state, 'Ready to draw');
+  assert.equal(controller.state, 'Hold open hand to arm');
   assert.deepEqual(events, []);
   controller.cancelStroke('mouse-started');
   assert.deepEqual(events, []);
+});
+
+test('camera requires an open-hand arm pose and debounce before drawing', async () => {
+  const elements = cameraElements();
+  const queue = [];
+  const events = [];
+  const open = hand({ pinchDistance: 0.14 });
+  const pinch = hand({ pinchDistance: 0.01 });
+  const frames = [
+    { landmarks: pinch },
+    { landmarks: pinch },
+    { landmarks: open },
+    { landmarks: open },
+    { landmarks: pinch },
+    { landmarks: pinch },
+    { landmarks: pinch },
+    { landmarks: open },
+    { landmarks: open }
+  ];
+  let estimateCount = 0;
+  const sandbox = loadCameraModules({
+    requestAnimationFrame(callback) { queue.push(callback); return queue.length; },
+    cancelAnimationFrame() {},
+    navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } }
+  });
+  const controller = sandbox.AirWriteCamera.createCameraController({
+    elements,
+    navigator: sandbox.navigator,
+    requestAnimationFrame: sandbox.requestAnimationFrame,
+    cancelAnimationFrame: sandbox.cancelAnimationFrame,
+    tracker: { estimate: () => frames[estimateCount++] },
+    armFrames: 2,
+    pinchStartFrames: 3,
+    pinchReleaseFrames: 2,
+    onStartStroke: () => { events.push('start'); return true; },
+    onEndStroke: ({ reason }) => events.push(`end:${reason}`)
+  });
+  await elements.start.listeners.click();
+  for (let index = 0; index < frames.length; index += 1) {
+    queue.shift()(index + 1);
+    await Promise.resolve();
+  }
+  assert.deepEqual(events, ['start', 'end:pinch-released']);
+  assert.equal(controller.state, 'Ready to draw');
 });

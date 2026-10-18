@@ -288,6 +288,7 @@ h1 {
 .airwriting-state[data-state="Drawing"] { color: #22634a; }
 .airwriting-state[data-state="Error"], .airwriting-state[data-state="Tracking lost"] { color: #92253a; }
 .airwriting-panel > .action-error { grid-column: 1 / -1; margin: 0; }
+.airwriting-help { grid-column: 1 / -1; margin: 0; color: #596274; font-size: 12px; line-height: 1.5; }
 .airwriting-preview-wrap { grid-column: 1 / -1; display: none; position: relative; max-width: 320px; }
 .airwriting-panel[data-active="true"] .airwriting-preview-wrap { display: block; }
 .airwriting-video { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: #1d2330; object-fit: cover; transform: scaleX(-1); }
