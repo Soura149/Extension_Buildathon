@@ -7,9 +7,9 @@
     REQUESTING: 'Requesting permission',
     READY: 'Camera ready',
     HAND: 'Hand detected',
-    ARMING: 'Hold open hand to arm',
-    DRAW: 'Ready to draw',
-    DRAWING: 'Drawing',
+    DRAW: 'Writing',
+    HOVER: 'Hovering cursor',
+    ERASE: 'Erasing',
     LOST: 'Tracking lost',
     ERROR: 'Error'
   });
@@ -37,21 +37,18 @@
     let stream = null;
     let frameHandle = null;
     let active = false;
-    let drawing = false;
+    let activeMode = null;
     let hadHand = false;
     let lastPoint = null;
-    let trackingState = { pinching: false };
-    let armed = false;
-    let openFrames = 0;
-    let pinchFrames = 0;
-    let releaseFrames = 0;
+    let lastPalmPoint = null;
+    let trackingState = { pinching: false, mode: 'none' };
     let tracker = settings.tracker || global.AirWriteLocalHandTracker || null;
     let currentState = STATES.OFF;
     let starting = false;
     let lifecycle = 0;
-    const armFrames = Math.max(1, Number(settings.armFrames) || 8);
-    const pinchStartFrames = Math.max(1, Number(settings.pinchStartFrames) || 3);
-    const pinchReleaseFrames = Math.max(1, Number(settings.pinchReleaseFrames) || 2);
+    const eraserRadius = Number.isFinite(Number(settings.eraserRadius))
+      ? Math.max(0.01, Math.min(0.25, Number(settings.eraserRadius)))
+      : 0.045;
 
     function setState(state, detail) {
       currentState = state;
@@ -68,18 +65,27 @@
     }
 
     function endStroke(reason) {
-      if (!drawing) return;
-      drawing = false;
-      if (typeof settings.onEndStroke === 'function') settings.onEndStroke({ reason });
+      if (activeMode !== 'draw') return;
+      activeMode = null;
+      if (typeof settings.onEndStroke === 'function') settings.onEndStroke({ reason, gesture: 'draw' });
+    }
+
+    function endMode(reason) {
+      if (!activeMode) return;
+      if (activeMode === 'draw') {
+        endStroke(reason);
+      } else {
+        const mode = activeMode;
+        activeMode = null;
+        if (typeof settings.onEndStroke === 'function') settings.onEndStroke({ reason, gesture: mode });
+      }
     }
 
     function resetGesture() {
-      armed = false;
-      openFrames = 0;
-      pinchFrames = 0;
-      releaseFrames = 0;
-      trackingState = { pinching: false };
+      activeMode = null;
+      trackingState = { pinching: false, mode: 'none' };
       lastPoint = null;
+      lastPalmPoint = null;
     }
 
     function stopTracks() {
@@ -94,7 +100,7 @@
       active = false;
       if (frameHandle !== null && typeof cancelRaf === 'function') cancelRaf(frameHandle);
       frameHandle = null;
-      endStroke(reason || 'camera-stopped');
+      endMode(reason || 'camera-stopped');
       if (tracker && typeof tracker.stop === 'function') tracker.stop();
       stopTracks();
       if (elements.video) {
@@ -110,7 +116,7 @@
       active = false;
       if (frameHandle !== null && typeof cancelRaf === 'function') cancelRaf(frameHandle);
       frameHandle = null;
-      endStroke('camera-error');
+      endMode('camera-error');
       if (tracker && typeof tracker.stop === 'function') tracker.stop();
       stopTracks();
       if (elements.video) {
@@ -152,7 +158,7 @@
         const classified = tracking.classifyFrame(frame, trackingState, { mirror: settings.mirror !== false });
         if (!classified.tracked) {
           hideCursor();
-          endStroke('tracking-lost');
+          endMode('tracking-lost');
           resetGesture();
           if (hadHand) setState(STATES.LOST);
           nextFrame();
@@ -161,49 +167,41 @@
         const firstHand = !hadHand;
         hadHand = true;
         trackingState = classified;
-        const point = typeof tracking.smoothPointWithLimit === 'function'
+        const indexPoint = typeof tracking.smoothPointWithLimit === 'function'
           ? tracking.smoothPointWithLimit(lastPoint, classified.point, settings.smoothing ?? 0.2, settings.maxPointJump ?? 0.18)
           : tracking.smoothPoint(lastPoint, classified.point, settings.smoothing ?? 0.2);
-        lastPoint = point;
+        const palmPoint = typeof tracking.smoothPointWithLimit === 'function'
+          ? tracking.smoothPointWithLimit(lastPalmPoint, classified.palmPoint, settings.smoothing ?? 0.2, settings.maxPointJump ?? 0.18)
+          : tracking.smoothPoint(lastPalmPoint, classified.palmPoint, settings.smoothing ?? 0.2);
+        lastPoint = indexPoint;
+        lastPalmPoint = palmPoint;
+        const point = classified.mode === 'erase' ? palmPoint : indexPoint;
         showCursor(point);
-        if (!armed) {
-          if (classified.armable) {
-            openFrames += 1;
-            if (openFrames >= armFrames) {
-              armed = true;
-              pinchFrames = 0;
-              releaseFrames = 0;
-              setState(STATES.DRAW);
-            } else {
-              setState(STATES.ARMING);
-            }
-          } else {
-            openFrames = 0;
-            setState(STATES.ARMING);
-          }
-          nextFrame();
-          return;
-        }
-        if (classified.pinching) {
-          pinchFrames += 1;
-          releaseFrames = 0;
-          if (!drawing && pinchFrames >= pinchStartFrames) {
+
+        if (classified.mode !== activeMode) endMode('gesture-changed');
+        if (classified.mode === 'draw') {
+          if (activeMode !== 'draw') {
             const accepted = typeof settings.onStartStroke === 'function'
-              ? settings.onStartStroke(point) !== false
+              ? settings.onStartStroke(indexPoint, { gesture: 'draw', classification: classified }) !== false
               : true;
-            if (accepted) drawing = true;
+            if (accepted) activeMode = 'draw';
           }
-          if (drawing) {
-            if (typeof settings.onPoint === 'function') settings.onPoint(point);
-            setState(STATES.DRAWING);
-          } else {
+          if (activeMode === 'draw') {
+            if (typeof settings.onPoint === 'function') settings.onPoint(indexPoint, { gesture: 'draw', classification: classified });
             setState(STATES.DRAW);
+          } else {
+            setState(firstHand ? STATES.HAND : STATES.READY);
           }
+        } else if (classified.mode === 'erase') {
+          if (activeMode !== 'erase') activeMode = 'erase';
+          if (typeof settings.onErase === 'function') {
+            settings.onErase(palmPoint, { radius: eraserRadius, gesture: 'erase', classification: classified });
+          }
+          setState(STATES.ERASE);
+        } else if (classified.mode === 'hover') {
+          setState(STATES.HOVER);
         } else {
-          pinchFrames = 0;
-          releaseFrames += 1;
-          if (drawing && releaseFrames >= pinchReleaseFrames) endStroke('pinch-released');
-          setState(drawing ? STATES.DRAWING : (firstHand ? STATES.HAND : STATES.DRAW));
+          setState(firstHand ? STATES.HAND : STATES.READY);
         }
         nextFrame();
       }).catch((error) => fail(cameraError('The local hand tracker failed.', error)));
@@ -256,7 +254,7 @@
       STATES,
       get state() { return currentState; },
       setTracker(nextTracker) { tracker = nextTracker; },
-      cancelStroke(reason) { endStroke(reason || 'camera-canceled'); },
+      cancelStroke(reason) { endMode(reason || 'camera-canceled'); },
       stop,
       handleStartClick: startFromClick,
       processFrame

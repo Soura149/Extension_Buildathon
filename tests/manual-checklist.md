@@ -110,19 +110,19 @@ checks require a real camera and should not be marked complete from Node tests.
       a clear recoverable Error state; mouse/snapshot editing remains usable.
 - [ ] Stop Camera stops every media track, hides the preview/cursor, and returns
       to Camera off. Repeat Stop is harmless. Pagehide also stops tracks.
-- [ ] Snapshot **Start Air-writing** shows the local mirrored preview and visible
-      fingertip cursor. It initially asks for an open-hand arm pose; the source
-      page and screenshot are not modified.
+ - [ ] Snapshot **Start Air-writing** shows the local mirrored preview and visible
+       gesture cursor. The source page and screenshot are not modified by camera
+       tracking.
 - [ ] Index fingertip movement moves the snapshot cursor and maps to the original
       image coordinate system, including near calibration-area edges.
-- [ ] Hold one complete open hand visible until the state says Ready to draw;
-      starting the camera while already pinching does not create a mark.
-- [ ] Keep the index finger extended, then hold a thumb/index pinch briefly to
-      start one annotation stroke; release ends it. Geometry checks, debounce, and
-      hysteresis prevent random frames or threshold chatter from drawing.
-- [ ] Losing the hand safely ends the current stroke without a connecting line
-      when the hand returns; the cursor resets and the open-hand arm pose is
-      required again. Status reports Tracking lost.
+ - [ ] Point with only the index finger to write at the fingertip; no pinch or
+       arming pose is required.
+ - [ ] Pinch or raise index and middle fingers to hover/reposition without
+       creating ink. Geometry checks and hysteresis prevent threshold chatter.
+ - [ ] Show an open palm to erase annotations around the smoothed palm/wrist
+       center; the eraser radius is visible in the editable annotation layer.
+ - [ ] Losing the hand safely ends the current stroke without a connecting line
+       when the hand returns; the cursor resets. Status reports Tracking lost.
 - [ ] Existing Pen/Eraser, colour, width, undo, redo, clear, Save, Export,
       Discard, and mouse/touch drawing remain usable before, during, and after
       camera use. A mouse stroke takes priority over camera start.

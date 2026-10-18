@@ -63,8 +63,10 @@ test('eraser composites only annotation pixels and cancellation preserves commit
   engine.beginStroke(10, 10);
   engine.finishStroke();
   engine.setTool('eraser');
+  engine.setEraserRadius(30);
   engine.beginStroke(10, 10);
   engine.finishStroke();
+  assert.equal(engine.getStrokes()[1].width, 60);
   assert.ok(calls.some((call) => call.method === 'fill' && call.composite === 'destination-out'));
   engine.beginStroke(30, 30);
   engine.cancelStroke();

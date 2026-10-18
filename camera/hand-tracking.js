@@ -84,7 +84,7 @@
     const options = thresholds || {};
     const start = Number.isFinite(Number(options.startThreshold))
       ? Number(options.startThreshold)
-      : Number.isFinite(Number(options.pinchOn)) ? Number(options.pinchOn) : 0.45;
+      : Number.isFinite(Number(options.pinchOn)) ? Number(options.pinchOn) : 0.42;
     const end = Number.isFinite(Number(options.endThreshold))
       ? Number(options.endThreshold)
       : Number.isFinite(Number(options.pinchOff)) ? Number(options.pinchOff) : 0.65;
@@ -163,7 +163,22 @@
 
   function measureHandGeometry(landmarks, options) {
     if (!Array.isArray(landmarks) || landmarks.length < 21 || landmarks.some((point) => !pointFrom(point))) {
-      return { valid: false, indexExtended: false, openHand: false, armable: false, scale: 0, pinchRatio: null };
+      return {
+        valid: false,
+        indexExtended: false,
+        middleExtended: false,
+        ringExtended: false,
+        pinkyExtended: false,
+        indexOnly: false,
+        indexMiddle: false,
+        openHand: false,
+        armable: false,
+        pinchCandidate: false,
+        scale: 0,
+        pinchRatio: null,
+        extendedFingers: 0,
+        mode: 'none'
+      };
     }
     const settings = options || {};
     const scale = median([
@@ -174,28 +189,42 @@
     ]);
     const minimumScale = Number.isFinite(Number(settings.minimumScale)) ? Number(settings.minimumScale) : 0.06;
     const indexExtended = scale >= minimumScale && fingerExtended(landmarks, 5, 6, 8, scale);
-    const extendedFingers = [
-      indexExtended,
-      fingerExtended(landmarks, 9, 10, 12, scale),
-      fingerExtended(landmarks, 13, 14, 16, scale),
-      fingerExtended(landmarks, 17, 18, 20, scale)
-    ].filter(Boolean).length;
+    const middleExtended = scale >= minimumScale && fingerExtended(landmarks, 9, 10, 12, scale);
+    const ringExtended = scale >= minimumScale && fingerExtended(landmarks, 13, 14, 16, scale);
+    const pinkyExtended = scale >= minimumScale && fingerExtended(landmarks, 17, 18, 20, scale);
+    const extendedFingers = [indexExtended, middleExtended, ringExtended, pinkyExtended].filter(Boolean).length;
     // Keep the public ratio calibrated to the wrist-to-middle-MCP scale used by
     // the controller while using the broader palm scale for posture checks.
     const ratio = pinchRatio(landmarks, handScale(landmarks));
-    const pinchOn = Number.isFinite(Number(settings.pinchOn)) ? Number(settings.pinchOn) : 0.4;
+    const pinchOn = Number.isFinite(Number(settings.pinchOn)) ? Number(settings.pinchOn) : 0.42;
     const pinchOff = Number.isFinite(Number(settings.pinchOff)) ? Number(settings.pinchOff) : 0.62;
-    const pinchCandidate = indexExtended && ratio !== null && ratio <= pinchOn;
-    const armable = !pinchCandidate && (extendedFingers >= 3 || (indexExtended && ratio !== null && ratio >= pinchOff));
+    const pinchCandidate = ratio !== null && ratio <= pinchOn;
+    const indexOnly = indexExtended && !middleExtended && !ringExtended && !pinkyExtended;
+    const indexMiddle = indexExtended && middleExtended;
+    const openHand = extendedFingers >= 4;
+    const armable = openHand;
+    const mode = openHand
+      ? 'erase'
+      : (pinchCandidate || indexMiddle)
+        ? 'hover'
+        : indexOnly
+          ? 'draw'
+          : 'none';
     return {
       valid: scale >= minimumScale,
       scale,
       pinchRatio: ratio,
       indexExtended,
-      openHand: extendedFingers >= 3,
+      middleExtended,
+      ringExtended,
+      pinkyExtended,
+      indexOnly,
+      indexMiddle,
+      openHand,
       armable,
       pinchCandidate,
-      extendedFingers
+      extendedFingers,
+      mode
     };
   }
 
@@ -209,26 +238,64 @@
     const landmarks = normalizeLandmarks(frame);
     const wasPinching = priorPinching(previousState);
     if (!landmarks || !landmarks[0] || !landmarks[4] || !landmarks[8] || !landmarks[9]) {
-      return { tracked: false, pinching: false, pinchCandidate: false, armable: false, point: null, ratio: null, scale: 0, landmarks: null };
+      return {
+        tracked: false,
+        mode: 'none',
+        pinching: false,
+        pinchCandidate: false,
+        armable: false,
+        point: null,
+        palmPoint: null,
+        ratio: null,
+        scale: 0,
+        landmarks: null
+      };
     }
     const scale = handScale(landmarks);
     const ratio = pinchRatio(landmarks, scale);
     const geometry = measureHandGeometry(landmarks, settings);
     if (!scale || ratio === null || !geometry.valid) {
-      return { tracked: false, pinching: false, pinchCandidate: false, armable: false, point: null, ratio, scale, landmarks: null };
+      return {
+        tracked: false,
+        mode: 'none',
+        pinching: false,
+        pinchCandidate: false,
+        armable: false,
+        point: null,
+        palmPoint: null,
+        ratio,
+        scale,
+        landmarks: null
+      };
     }
+    const pinching = isPinching(ratio, wasPinching, settings);
+    const mode = geometry.openHand
+      ? 'erase'
+      : (pinching || geometry.indexMiddle)
+        ? 'hover'
+        : geometry.indexOnly
+          ? 'draw'
+          : 'none';
     return {
       tracked: true,
-      pinching: geometry.indexExtended && isPinching(ratio, wasPinching, settings),
+      mode,
+      pinching,
       pinchCandidate: geometry.pinchCandidate,
       armable: geometry.armable,
       openHand: geometry.openHand,
       indexExtended: geometry.indexExtended,
+      middleExtended: geometry.middleExtended,
+      ringExtended: geometry.ringExtended,
+      pinkyExtended: geometry.pinkyExtended,
+      indexOnly: geometry.indexOnly,
+      indexMiddle: geometry.indexMiddle,
       extendedFingers: geometry.extendedFingers,
       point: mapLandmarkToNormalizedPoint(landmarks[8], settings),
+      palmPoint: mapLandmarkToNormalizedPoint(landmarks[9], settings),
       ratio,
       scale,
-      landmarks
+      landmarks,
+      geometry
     };
   }
 

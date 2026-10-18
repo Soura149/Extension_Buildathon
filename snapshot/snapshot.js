@@ -63,8 +63,10 @@
     objectUrls: new Set(),
     revokeTimers: new Set()
     ,camera: null
+    ,cameraGesture: null
     ,cameraDrawing: false
     ,cameraStrokePoints: 0
+    ,cameraToolBefore: null
   };
 
   function signature(title, strokes) {
@@ -120,11 +122,22 @@
   }
 
   function endCameraStroke(reason, cancel = false) {
-    if (!state.cameraDrawing || !state.engine) return;
+    if (!state.cameraGesture || !state.engine) return;
+    const gesture = state.cameraGesture;
     state.cameraDrawing = false;
+    state.cameraGesture = null;
     state.cameraStrokePoints = 0;
-    if (cancel) state.engine.cancelStroke();
-    else state.engine.finishStroke();
+    if (gesture === 'draw') {
+      if (cancel) state.engine.cancelStroke();
+      else state.engine.finishStroke();
+    }
+    if (state.cameraToolBefore) {
+      state.engine.setTool(state.cameraToolBefore);
+      ui.pen.setAttribute('aria-pressed', String(state.cameraToolBefore === 'pen'));
+      ui.eraser.setAttribute('aria-pressed', String(state.cameraToolBefore === 'eraser'));
+      ui.canvas.dataset.tool = state.cameraToolBefore;
+      state.cameraToolBefore = null;
+    }
     ui.airwritingCursor.dataset.drawing = 'false';
     refreshContent();
     if (reason === 'tracking-lost') setStatus('Hand lost. The air-writing stroke was safely ended.');
@@ -156,8 +169,11 @@
         if (value === 'Camera off' || value === 'Error') ui.airwritingCursor.hidden = true;
       },
       onStartStroke: (point) => {
-        if (!canEdit() || state.pointerId !== null || state.cameraDrawing) return false;
+        if (!canEdit() || state.pointerId !== null || state.cameraGesture) return false;
         const mapped = imagePoint(point);
+        state.cameraToolBefore = ui.canvas.dataset.tool || 'pen';
+        state.engine.setTool('pen');
+        state.cameraGesture = 'draw';
         state.cameraDrawing = true;
         state.cameraStrokePoints = 1;
         state.engine.beginStroke(mapped.x, mapped.y);
@@ -165,10 +181,32 @@
         return true;
       },
       onPoint: (point) => {
-        if (!state.cameraDrawing || !canEdit()) return;
+        if (state.cameraGesture !== 'draw' || !canEdit()) return;
         const mapped = imagePoint(point);
         state.engine.continueStroke(mapped.x, mapped.y);
         state.cameraStrokePoints += 1;
+      },
+      onErase: (point, details = {}) => {
+        if (!canEdit() || state.pointerId !== null) return;
+        if (!state.cameraGesture) {
+          state.cameraToolBefore = ui.canvas.dataset.tool || 'pen';
+          state.cameraGesture = 'erase';
+          state.engine.setTool('eraser');
+          ui.pen.setAttribute('aria-pressed', 'false');
+          ui.eraser.setAttribute('aria-pressed', 'true');
+          ui.canvas.dataset.tool = 'eraser';
+        }
+        if (state.cameraGesture !== 'erase') return;
+        const mapped = imagePoint(point);
+        const normalizedRadius = Number(details.radius);
+        const radius = Number.isFinite(normalizedRadius)
+          ? Math.max(4, Math.min(160, normalizedRadius * Math.min(state.imageWidth, state.imageHeight)))
+          : 22;
+        if (typeof state.engine.setEraserRadius === 'function') state.engine.setEraserRadius(radius);
+        state.engine.beginStroke(mapped.x, mapped.y);
+        state.engine.finishStroke();
+        state.cameraStrokePoints += 1;
+        refreshContent();
       },
       onEndStroke: ({ reason }) => endCameraStroke(reason, false)
     });
@@ -283,7 +321,7 @@
       return;
     }
     event.preventDefault();
-    if (state.cameraDrawing) stopCamera('mouse-started');
+    if (state.camera && !['Camera off', 'Error'].includes(state.camera.state)) stopCamera('mouse-started');
     ui.canvas.focus({ preventScroll: true });
     try {
       ui.canvas.setPointerCapture(event.pointerId);

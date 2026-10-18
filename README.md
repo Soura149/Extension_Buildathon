@@ -27,9 +27,9 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 - **Saved Notes** with source-screenshot thumbnails, titles, source links,
   creation dates, editable reopen, rename, and confirmed delete.
 - Experimental Snapshot Canvas air-writing using a packaged local MediaPipe Hand
-  Landmarker: fingertip cursor, open-hand arming, index-finger geometry checks,
-  debounced pinch-to-draw, bounded cursor smoothing, tracking-loss stroke
-  termination, and camera stop cleanup.
+  Landmarker: index-only writing, pinch/two-finger cursor hovering, open-palm
+  erasing, bounded cursor smoothing, tracking-loss stroke termination, and
+  camera stop cleanup.
 - Original screenshots and editable strokes are stored separately in IndexedDB;
   only small metadata is kept in `chrome.storage.local`.
 - Captured note images are normalized to WebP quality 0.82 (JPEG fallback) and
@@ -92,14 +92,12 @@ test webpage. If the active page is restricted, the popup shows an explanation.
 Snapshot Canvas includes a clearly labelled **Experimental Air-writing** panel.
 It requests camera permission only after **Start Air-writing** or **Start Camera**
 is clicked. The packaged MediaPipe Hand Landmarker runs locally with a CPU
-delegate; no camera frames or hand landmarks are saved or uploaded. First show
-one complete open hand inside the preview to arm the gesture. Then keep the
-index finger extended: its fingertip controls the visible cursor. Hold a
-thumb/index pinch for several frames to start a stroke, and release to stop.
-The index-finger geometry check, temporal debounce, and cursor jump limit prevent
-single-frame tracking noise from creating annotations. Losing tracking ends the
-current camera stroke and requires the open-hand pose again. Mouse/touch drawing
-remains available and takes priority if it is already active.
+delegate; no camera frames or hand landmarks are saved or uploaded. Point with
+only the index finger to write at the fingertip, pinch or raise index and middle
+fingers to hover without committing ink, and show an open palm to erase around
+the palm/wrist center. Coordinates are smoothed and jump-limited. Losing
+tracking ends the current camera action. Mouse/touch drawing remains available
+and takes priority if it is already active.
 
 Use **Camera Test** in the popup first to inspect permission, camera, tracker,
 and stop states without opening a note. The model, WASM runtime, checksums, and

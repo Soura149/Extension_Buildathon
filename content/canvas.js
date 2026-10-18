@@ -21,6 +21,7 @@
       this.tool = 'pen';
       this.color = '#ff3b30';
       this.width = 4;
+      this.eraserWidth = 22;
       this.dpr = 1;
       this.resize();
     }
@@ -39,6 +40,13 @@
       const nextWidth = Number(width);
       if (Number.isFinite(nextWidth)) {
         this.width = Math.min(24, Math.max(1, nextWidth));
+      }
+    }
+
+    setEraserRadius(radius) {
+      const nextRadius = Number(radius);
+      if (Number.isFinite(nextRadius)) {
+        this.eraserWidth = Math.min(320, Math.max(2, nextRadius * 2));
       }
     }
 
@@ -86,7 +94,7 @@
       this.activeStroke = {
         tool: this.tool,
         color: this.color,
-        width: this.tool === 'eraser' ? 22 : this.width,
+        width: this.tool === 'eraser' ? this.eraserWidth : this.width,
         points: [{ x, y }]
       };
       this.render();
