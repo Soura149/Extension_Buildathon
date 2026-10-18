@@ -1,6 +1,19 @@
 (function installHandTracking(global) {
   'use strict';
 
+  // Route MediaPipe Emscripten debug/warning logs to console.debug so Chrome
+  // doesn't record benign C++ model diagnostics as extension errors on chrome://extensions.
+  if (global && typeof global.dbg === 'undefined') {
+    global.dbg = function mediaPipeDbg(text) {
+      if (global.console && typeof global.console.debug === 'function') {
+        global.console.debug('[MediaPipe]', text);
+      }
+    };
+  }
+  if (global && typeof global.custom_dbg === 'undefined') {
+    global.custom_dbg = global.dbg;
+  }
+
   function clamp(value, minimum, maximum) {
     const min = Number.isFinite(minimum) ? minimum : 0;
     const max = Number.isFinite(maximum) ? maximum : 1;
