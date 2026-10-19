@@ -6,12 +6,13 @@ const { createNotesPage, settle } = require('./helpers/notes-dom');
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const strokes = [{ tool: 'pen', color: '#ff0000', width: 4, points: [{ x: 12, y: 34 }] }];
+const annotations = [{ id: 'text-1', type: 'text', x: 100, y: 120, text: 'Review this\nsection', color: '#1677ff', fontSize: 20, fontFamily: 'sans-serif', lineHeight: 1.25, createdAt: 1000, updatedAt: 1000 }];
 
 function note(overrides = {}) {
   return {
     title: 'Research', pageTitle: 'Source article', url: 'https://example.com/article',
     createdAt: '2026-10-18T10:00:00Z', screenshot: new Blob(['original image'], { type: 'image/png' }),
-    strokes: structuredClone(strokes), imageWidth: 1280, imageHeight: 720, ...overrides
+     strokes: structuredClone(strokes), annotations: structuredClone(annotations), imageWidth: 1280, imageHeight: 720, ...overrides
   };
 }
 
@@ -29,6 +30,7 @@ test('save, reopen in a fresh context, edit strokes, rename and delete', async (
   const reopened = await api.getNote(saved.id);
   assert.equal(await reopened.screenshot.text(), 'original image');
   assert.deepEqual(plain(reopened.strokes), strokes);
+  assert.deepEqual(plain(reopened.annotations), annotations);
   const editedStrokes = [...strokes, { tool: 'eraser', width: 22, points: [{ x: 10, y: 20 }] }];
   env.advance(5000);
   const edited = await api.saveNote({ ...reopened, title: 'Edited', strokes: editedStrokes });
@@ -37,6 +39,7 @@ test('save, reopen in a fresh context, edit strokes, rename and delete', async (
   assert.notEqual(edited.updatedAt, saved.updatedAt);
   assert.equal(env.writes.screenshots, 1, 'reopened Blob is compared by content, not object identity');
   assert.deepEqual(plain((await api.getNote(saved.id)).strokes), editedStrokes);
+  assert.deepEqual(plain((await api.getNote(saved.id)).annotations), annotations);
 
   await api.renameNote(saved.id, '  Renamed  ');
   const metadata = (await api.listNotes())[0];
@@ -94,6 +97,7 @@ test('getNotes exposes usage warning and the requested ID-based API', async () =
   assert.equal(list.bytesUsed, usage.bytesUsed);
   assert.equal(list.percent, usage.percent);
   assert.equal((await api.getNoteById(saved.id)).id, saved.id);
+  assert.deepEqual(plain((await api.getNoteById(saved.id)).annotations), annotations);
   assert.equal(usage.maxBytes, 50 * 1024 * 1024);
   assert.equal(usage.storageWarning, false);
 });
@@ -127,7 +131,8 @@ test('replacing an image updates it and releases superseded payloads', async () 
   assert.equal(await (await api.getNote(saved.id)).screenshot.text(), 'replacement');
   assert.equal(env.writes.screenshots, 2);
   assert.equal(env.stores.get('screenshots').size, 1);
-  assert.equal(env.stores.get('strokes').size, 1);
+   assert.equal(env.stores.get('strokes').size, 1);
+   assert.equal(env.stores.get('annotations').size, 1);
 });
 
 test('drafts are IDB-only, reopen, expire after 24h on create, and delete cleanly', async () => {
@@ -139,7 +144,8 @@ test('drafts are IDB-only, reopen, expire after 24h on create, and delete cleanl
   assert.equal(draft.pageTitle, 'Source article');
   assert.equal(draft.title, 'Source article');
   assert.equal(await draft.screenshot.text(), 'original image');
-  assert.deepEqual(plain(draft.strokes), []);
+   assert.deepEqual(plain(draft.strokes), []);
+   assert.deepEqual(plain(draft.annotations), []);
   assert.equal(env.metadata.size, 0);
   env.advance(23 * 60 * 60 * 1000);
   const recent = await api.createDraft(note({ createdAt: undefined }));
@@ -153,7 +159,8 @@ test('drafts are IDB-only, reopen, expire after 24h on create, and delete cleanl
   await api.deleteDraft(newest);
   assert.equal(env.stores.get('drafts').size, 0);
   assert.equal(env.stores.get('screenshots').size, 0);
-  assert.equal(env.stores.get('strokes').size, 0);
+   assert.equal(env.stores.get('strokes').size, 0);
+   assert.equal(env.stores.get('annotations').size, 0);
 });
 
 test('metadata failures reject and preserve the previous committed payload', async () => {
@@ -198,7 +205,8 @@ test('IDB open, transaction, corrupt/missing payload, and readback failures reje
 test('invalid inputs reject Error and missing IDs return null', async () => {
   const api = createEnvironment().load();
   for (const input of [note({ screenshot: 'not a Blob' }), note({ strokes: {} }),
-    note({ imageWidth: 0 }), note({ createdAt: 'invalid' })]) {
+     note({ annotations: {} }), note({ annotations: [{ ...annotations[0], color: 'red' }] }),
+     note({ imageWidth: 0 }), note({ createdAt: 'invalid' })]) {
     await assert.rejects(api.saveNote(input), Error);
   }
   await assert.rejects(api.getNote(''), /ID/);

@@ -178,7 +178,9 @@
         lastPoint = indexPoint;
         lastPalmPoint = palmPoint;
         const point = classified.mode === 'erase' ? palmPoint : indexPoint;
-        showCursor(point);
+         if (typeof settings.onPointerMove !== 'function' || settings.onPointerMove(point, classified) !== false) {
+           showCursor(point);
+         }
 
         if (classified.mode !== activeMode) endMode('gesture-changed');
         if (classified.mode === 'draw') {

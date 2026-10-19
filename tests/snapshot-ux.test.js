@@ -40,3 +40,19 @@ test('snapshot air-writing UX keeps the camera visible and controls accessible',
   assert.match(snapshot, /airwritingSearching\.style\.opacity/);
   assert.match(html, /Searching for hand/);
 });
+
+test('snapshot text annotations expose the editor, keyboard trigger, scaling, history, and export seams', () => {
+  assert.match(html, /id="text"[^>]*data-tool="text"/);
+  assert.match(html, /id="text-annotation-layer"/);
+  assert.match(html, /src="\.\.\/content\/text-annotations\.js"/);
+  assert.match(css, /\.text-annotation-layer/);
+  assert.match(css, /rgba\(22, 25, 35, 0\.92\)/);
+  assert.match(snapshot, /initializeTextAnnotations/);
+  assert.match(snapshot, /coordinateAdapter: textCoordinateAdapter/);
+  assert.match(snapshot, /event\.key\.toLowerCase\(\) === 't'/);
+  assert.match(snapshot, /onCreate: \(draft\)/);
+  assert.match(snapshot, /onMove: \(id, beforeAnnotation, afterAnnotation\)/);
+  assert.match(snapshot, /annotations,/);
+  assert.match(snapshot, /renderToCanvas\(context, 1\)/);
+  assert.match(snapshot, /state\.textGesturePaused/);
+});

@@ -9,7 +9,7 @@ function createEnvironment({ webLocks = true, storage = true } = {}) {
   const stores = new Map();
   const metadata = new Map();
   const faults = [];
-  const writes = { screenshots: 0, strokes: 0 };
+  const writes = { screenshots: 0, strokes: 0, annotations: 0 };
   const pending = [];
   let processing = false;
   let now = Date.parse('2026-10-18T12:00:00.000Z');
@@ -54,7 +54,7 @@ function createEnvironment({ webLocks = true, storage = true } = {}) {
           if (action === 'put') {
             if (mode !== 'drop') store.set(key, mode === 'corrupt' ? [] : structuredClone(value));
             request.result = key;
-            if (name in writes) writes[name] += 1;
+           if (name in writes) writes[name] += 1;
           }
           if (action === 'delete' && mode !== 'drop') store.delete(key);
         }
@@ -112,7 +112,7 @@ function createEnvironment({ webLocks = true, storage = true } = {}) {
         if (mode === 'blocked') request.onblocked?.();
         request.result = database;
         if (!stores.size) {
-          if (name !== 'AirWriteNotes' || version !== 2) throw new Error('Unexpected database schema.');
+           if (name !== 'AirWriteNotes' || version !== 3) throw new Error('Unexpected database schema.');
           request.onupgradeneeded?.();
         }
         request.onsuccess?.();
@@ -132,7 +132,11 @@ function createEnvironment({ webLocks = true, storage = true } = {}) {
       if (mode !== 'drop') {
         for (const [key, value] of Object.entries(values)) {
           // Chrome's storage serialization does not preserve object-key order.
-          const reordered = Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+           const reordered = Object.fromEntries(Object.entries(value).sort(([a], [b]) => {
+             if (a === 'createdAt') return -1;
+             if (b === 'createdAt') return 1;
+             return a.localeCompare(b);
+           }));
           metadata.set(key, structuredClone(reordered));
         }
       }

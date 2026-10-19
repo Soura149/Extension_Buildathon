@@ -46,7 +46,9 @@
     clear: byId('clear'),
     stack: byId('image-stack'),
     image: byId('screenshot'),
-    canvas: byId('annotation-canvas'),
+     canvas: byId('annotation-canvas'),
+     text: byId('text'),
+     textLayer: byId('text-annotation-layer'),
     dimensions: byId('image-dimensions')
   };
 
@@ -75,11 +77,19 @@
     ,cameraDrawing: false
     ,cameraStrokePoints: 0
     ,cameraToolBefore: null
-    ,previewDrag: null
+     ,previewDrag: null
+     ,textAnnotations: null
+     ,textTool: false
+     ,textGesturePaused: false
+     ,lastAirPoint: null
+     ,lastCameraPinching: false
+     ,historyUndo: []
+     ,historyRedo: []
+     ,strokeBefore: null
   };
 
-  function signature(title, strokes) {
-    return JSON.stringify({ title, strokes });
+  function signature(title, strokes, annotations) {
+    return JSON.stringify({ title, strokes, annotations });
   }
 
   function hasUnsavedChanges() {
@@ -94,6 +104,107 @@
 
   function canEdit() {
     return state.ready && state.operation === null;
+  }
+
+  function annotationSnapshot() {
+    return state.textAnnotations?.getAnnotations() || [];
+  }
+
+  function workspaceSnapshot() {
+    return { strokes: state.engine?.getStrokes() || [], annotations: annotationSnapshot() };
+  }
+
+  function recordHistory(before) {
+    const after = workspaceSnapshot();
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
+    state.historyUndo.push(before);
+    state.historyRedo = [];
+  }
+
+  function restoreWorkspace(snapshot) {
+    state.engine.setStrokes(snapshot.strokes);
+    state.textAnnotations.setAnnotations(snapshot.annotations);
+    refreshContent();
+  }
+
+  function textCoordinateAdapter() {
+    const scales = () => {
+      const rect = ui.stack.getBoundingClientRect();
+      return {
+        rect,
+        scaleX: state.imageWidth / (rect.width || state.imageWidth),
+        scaleY: state.imageHeight / (rect.height || state.imageHeight)
+      };
+    };
+    return {
+      toDisplayPoint: (point) => { const { scaleX, scaleY } = scales(); return { x: point.x / scaleX, y: point.y / scaleY }; },
+      toLogicalPoint: (point) => { const { scaleX, scaleY } = scales(); return { x: point.x * scaleX, y: point.y * scaleY }; },
+      displayDeltaToLogical: (point) => { const { scaleX, scaleY } = scales(); return { x: point.x * scaleX, y: point.y * scaleY }; },
+      editorBounds: () => { const { rect } = scales(); return { width: rect.width, height: rect.height }; }
+    };
+  }
+
+  function currentAirPoint() {
+    if (state.lastAirPoint && Number.isFinite(state.lastAirPoint.x) && Number.isFinite(state.lastAirPoint.y)) {
+      return state.lastAirPoint;
+    }
+    if (ui.airwritingCursor && ui.airwritingCursor.style.left && ui.airwritingCursor.style.top) {
+      const x = parseFloat(ui.airwritingCursor.style.left) / 100;
+      const y = parseFloat(ui.airwritingCursor.style.top) / 100;
+      if (Number.isFinite(x) && Number.isFinite(y)) return { x, y };
+    }
+    return { x: 0.5, y: 0.5 };
+  }
+
+  function openTextAtImagePoint(point, { stopActiveCamera = true } = {}) {
+    if (!state.textAnnotations || !canEdit()) return false;
+    if (stopActiveCamera) stopCamera('text-editor');
+    state.textAnnotations.setEnabled(true);
+    return state.textAnnotations.openEditor(point);
+  }
+
+  function openTextAtAirPoint() {
+    if (!canEdit()) return false;
+    const now = Date.now();
+    if (now - (state.lastTextClosedAt || 0) < 600) return false;
+    endCameraStroke('text-editor', false);
+    setTextTool(true);
+    state.textGesturePaused = true;
+    const point = currentAirPoint();
+    return openTextAtImagePoint(imagePoint(point), { stopActiveCamera: false });
+  }
+
+  function setTextTool(enabled) {
+    state.textTool = Boolean(enabled);
+    cancelActiveStroke();
+    if (state.textTool) {
+      state.engine.setTool('pen');
+      ui.canvas.dataset.tool = 'text';
+      ui.text?.setAttribute('aria-pressed', 'true');
+      ui.pen.setAttribute('aria-pressed', 'false');
+      ui.eraser.setAttribute('aria-pressed', 'false');
+      state.textAnnotations.setEnabled(canEdit());
+      setStatus('Text selected. Click the screenshot or press T to place an annotation.');
+    } else {
+      state.textAnnotations?.cancelEditor();
+      state.textAnnotations?.setEnabled(false);
+      ui.text?.setAttribute('aria-pressed', 'false');
+      ui.canvas.dataset.tool = state.engine.tool;
+    }
+    refreshControls();
+  }
+
+  function changeTextHistory(action) {
+    if (!canEdit()) return;
+    cancelActiveStroke();
+    stopCamera('history-change');
+    const current = workspaceSnapshot();
+    const next = action === 'undo' ? state.historyUndo.pop() : state.historyRedo.pop();
+    if (!next) return;
+    if (action === 'undo') state.historyRedo.push(current);
+    else state.historyUndo.push(current);
+    restoreWorkspace(next);
+    setStatus(action === 'undo' ? 'Undid the latest annotation.' : 'Redid the latest annotation.');
   }
 
   function setStatus(message) {
@@ -227,6 +338,8 @@
     if (gesture === 'draw') {
       if (cancel) state.engine.cancelStroke();
       else state.engine.finishStroke();
+      if (!cancel && state.strokeBefore) recordHistory(state.strokeBefore);
+      state.strokeBefore = null;
     }
     if (state.cameraToolBefore) {
       state.engine.setTool(state.cameraToolBefore);
@@ -244,6 +357,61 @@
     state.camera?.stop(reason);
     endCameraStroke(reason, reason === 'mouse-started' || reason === 'camera-error');
     ui.airwritingCursor.hidden = true;
+  }
+
+  function initializeTextAnnotations() {
+    if (!globalThis.AirWriteTextAnnotations || !ui.textLayer) return;
+    state.textAnnotations = new globalThis.AirWriteTextAnnotations(ui.textLayer, {
+      coordinateAdapter: textCoordinateAdapter(),
+      onCreate: (draft) => {
+        const before = workspaceSnapshot();
+        state.textAnnotations.add(draft);
+        recordHistory(before);
+        state.textGesturePaused = false;
+        selectTool('pen');
+        refreshContent();
+        setStatus('Text annotation added. Pen selected.');
+      },
+      onEdit: (id, draft) => {
+        const before = workspaceSnapshot();
+        state.textAnnotations.update(id, draft);
+        recordHistory(before);
+        state.textGesturePaused = false;
+        selectTool('pen');
+        refreshContent();
+        setStatus('Text annotation updated. Pen selected.');
+      },
+      onDelete: (id) => {
+        const before = workspaceSnapshot();
+        state.textAnnotations.remove(id);
+        recordHistory(before);
+        state.textGesturePaused = false;
+        selectTool('pen');
+        refreshContent();
+        setStatus('Text annotation deleted. Pen selected.');
+      },
+      onMove: (id, beforeAnnotation, afterAnnotation) => {
+        const current = workspaceSnapshot();
+        const before = {
+          strokes: current.strokes,
+          annotations: current.annotations.map((annotation) => annotation.id === id ? { ...beforeAnnotation } : { ...annotation })
+        };
+        recordHistory(before);
+        refreshContent();
+        setStatus('Text annotation moved.');
+      },
+      onEditorStateChange: (editing) => {
+        state.textGesturePaused = editing;
+        if (editing) {
+          state.cameraGesture = null;
+        } else {
+          state.lastTextClosedAt = Date.now();
+          state.lastCameraPinching = true;
+          selectTool('pen');
+        }
+      }
+    });
+    state.textAnnotations.setEnabled(false);
   }
 
   function initializeAirwriting() {
@@ -265,14 +433,28 @@
         setAirwritingState(value, detail);
         if (value === 'Camera off' || value === 'Error' || value === 'Tracking lost') setGestureHud('none');
         if (value === 'Camera off' || value === 'Error') ui.airwritingCursor.hidden = true;
+        if (value === 'Camera off' || value === 'Error' || value === 'Tracking lost') state.lastCameraPinching = false;
+      },
+      onPointerMove: (point, classified) => {
+        if (point) state.lastAirPoint = point;
+        if (state.textGesturePaused) return false;
+        const pinching = Boolean(classified?.pinching);
+        const pinchStarted = pinching && !state.lastCameraPinching;
+        state.lastCameraPinching = pinching;
+        const now = Date.now();
+        const cooldown = now - (state.lastTextClosedAt || 0) < 600;
+        if (state.textTool && pinchStarted && !cooldown) openTextAtAirPoint();
+        return true;
       },
       onModeChange: (_mode, classified) => setGestureHud(classified?.mode || 'none'),
       onStartStroke: (point) => {
-        if (!canEdit() || state.pointerId !== null || state.cameraGesture) return false;
+        if (point) state.lastAirPoint = point;
+        if (!canEdit() || state.pointerId !== null || state.cameraGesture || state.textTool || state.textGesturePaused) return false;
         const mapped = imagePoint(point);
         state.cameraToolBefore = ui.canvas.dataset.tool || 'pen';
         state.engine.setTool('pen');
         state.cameraGesture = 'draw';
+        state.strokeBefore = workspaceSnapshot();
         state.cameraDrawing = true;
         state.cameraStrokePoints = 1;
         state.engine.beginStroke(mapped.x, mapped.y);
@@ -280,12 +462,16 @@
         return true;
       },
       onPoint: (point) => {
+        if (point) state.lastAirPoint = point;
+        if (state.textTool || state.textGesturePaused) return;
         if (state.cameraGesture !== 'draw' || !canEdit()) return;
         const mapped = imagePoint(point);
         state.engine.continueStroke(mapped.x, mapped.y);
         state.cameraStrokePoints += 1;
       },
       onErase: (point, details = {}) => {
+        if (point) state.lastAirPoint = point;
+        if (state.textTool || state.textGesturePaused) return;
         if (!canEdit() || state.pointerId !== null) return;
         if (!state.cameraGesture) {
           state.cameraToolBefore = ui.canvas.dataset.tool || 'pen';
@@ -296,6 +482,7 @@
           ui.canvas.dataset.tool = 'eraser';
         }
         if (state.cameraGesture !== 'erase') return;
+        const before = workspaceSnapshot();
         const mapped = imagePoint(point);
         const normalizedRadius = Number(details.radius);
         const radius = Number.isFinite(normalizedRadius)
@@ -304,6 +491,7 @@
         if (typeof state.engine.setEraserRadius === 'function') state.engine.setEraserRadius(radius);
         state.engine.beginStroke(mapped.x, mapped.y);
         state.engine.finishStroke();
+        recordHistory(before);
         state.cameraStrokePoints += 1;
         refreshContent();
       },
@@ -321,14 +509,15 @@
     ui.save.disabled = locked || drawing;
     ui.export.disabled = locked || drawing || state.exporting;
     ui.discard.disabled = locked;
-    ui.canvas.setAttribute('aria-disabled', String(locked));
+      ui.canvas.setAttribute('aria-disabled', String(locked));
     ui.canvas.tabIndex = locked ? -1 : 0;
     ui.savedNotes.setAttribute('aria-disabled', String(state.operation !== null));
     ui.savedNotes.tabIndex = state.operation === null ? 0 : -1;
     ui.save.textContent = state.operation === 'save' ? 'Saving…' : 'Save Note';
     ui.discard.textContent = state.operation === 'discard' ? 'Discarding…' : 'Discard';
     ui.export.textContent = state.exporting ? 'Exporting…' : 'Export Image PNG';
-    ui.clear.disabled = locked || (!drawing && (!state.engine || state.engine.getStrokes().length === 0));
+     ui.clear.disabled = locked || (!drawing && (!state.engine || state.engine.getStrokes().length === 0));
+     if (ui.text) ui.text.disabled = locked;
 
     const dirty = hasUnsavedChanges();
     if (state.operation !== null) {
@@ -346,7 +535,7 @@
 
   function refreshContent() {
     if (state.engine) {
-      state.currentSignature = signature(ui.title.value, state.engine.getStrokes());
+      state.currentSignature = signature(ui.title.value, state.engine.getStrokes(), annotationSnapshot());
     }
     refreshControls();
   }
@@ -391,6 +580,7 @@
     state.pointerId = null;
     state.lastPoint = null;
     state.engine.cancelStroke();
+    state.strokeBefore = null;
     releasePointer(pointerId);
     refreshControls();
   }
@@ -403,6 +593,8 @@
     state.pointerId = null;
     state.lastPoint = null;
     state.engine.finishStroke();
+    if (state.strokeBefore) recordHistory(state.strokeBefore);
+    state.strokeBefore = null;
     releasePointer(pointerId);
     refreshContent();
     setStatus('Stroke added. Save Note to keep your changes.');
@@ -428,6 +620,7 @@
       const point = state.engine.getPoint(event);
       state.pointerId = event.pointerId;
       state.lastPoint = point;
+      state.strokeBefore = workspaceSnapshot();
       state.engine.beginStroke(point.x, point.y);
       refreshControls();
     } catch (error) {
@@ -483,6 +676,11 @@
       return;
     }
     cancelActiveStroke();
+    if (tool === 'text') {
+      setTextTool(true);
+      return;
+    }
+    setTextTool(false);
     state.engine.setTool(tool);
     ui.pen.setAttribute('aria-pressed', String(tool === 'pen'));
     ui.eraser.setAttribute('aria-pressed', String(tool === 'eraser'));
@@ -492,6 +690,7 @@
 
   ui.pen.addEventListener('click', () => selectTool('pen'));
   ui.eraser.addEventListener('click', () => selectTool('eraser'));
+  ui.text?.addEventListener('click', () => selectTool('text'));
   for (const button of ui.colors) {
     button.addEventListener('click', () => {
       if (!canEdit()) {
@@ -518,7 +717,14 @@
     }
     cancelActiveStroke();
     stopCamera('history-change');
-    state.engine[action]();
+    if (action === 'undo' || action === 'redo') {
+      changeTextHistory(action);
+      return;
+    }
+    const before = workspaceSnapshot();
+    state.engine.clear();
+    state.textAnnotations.clear();
+    recordHistory(before);
     refreshContent();
     setStatus(hasUnsavedChanges() ? 'Unsaved changes. Save Note to keep them.' : 'All changes are saved locally.');
   }
@@ -542,7 +748,8 @@
     clearActionError();
     ui.title.value = ui.title.value.trim() || 'Untitled note';
     const strokes = state.engine.getStrokes();
-    const savedSignature = signature(ui.title.value, strokes);
+    const annotations = annotationSnapshot();
+    const savedSignature = signature(ui.title.value, strokes, annotations);
     const payload = {
       title: ui.title.value,
       pageTitle: state.record.pageTitle,
@@ -550,6 +757,7 @@
       createdAt: state.record.createdAt,
       screenshot: state.record.screenshot,
       strokes,
+      annotations,
       imageWidth: state.imageWidth,
       imageHeight: state.imageHeight
     };
@@ -560,7 +768,7 @@
     // Lock all editing while storage is pending; the baseline is this exact payload.
     state.operation = 'save';
     refreshContent();
-    setStatus('Saving the screenshot and editable strokes locally…');
+    setStatus('Saving the screenshot and editable annotations locally…');
     let saved;
     try {
       saved = await state.notes.saveNote(payload);
@@ -639,6 +847,7 @@
       // The engine erases only its transparent layer. Composite that layer last.
       context.drawImage(ui.image, 0, 0, state.imageWidth, state.imageHeight);
       context.drawImage(ui.canvas, 0, 0, state.imageWidth, state.imageHeight);
+      state.textAnnotations?.renderToCanvas(context, 1);
       const blob = await pngBlob(flattened);
       if (!state.pageActive) {
         return;
@@ -731,6 +940,24 @@
   byId('retry-load').addEventListener('click', () => window.location.reload());
 
   document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const editingField = target instanceof Element && target.closest('input, textarea, select, [contenteditable]');
+    if (editingField) {
+      return;
+    }
+    const key = event.key.toLowerCase();
+    const isCameraActive = state.camera && !['Camera off', 'Error'].includes(state.camera.state);
+
+    if (event.key.toLowerCase() === 't' && canEdit() && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (isCameraActive) {
+        openTextAtAirPoint();
+      } else {
+        selectTool('text');
+        setStatus('Text tool selected. Click on the screenshot to place a note.');
+      }
+      return;
+    }
     if (event.key === 'Escape' && state.pointerId !== null) {
       event.preventDefault();
       cancelActiveStroke();
@@ -740,14 +967,9 @@
     if ((!event.ctrlKey && !event.metaKey) || event.altKey) {
       return;
     }
-    const key = event.key.toLowerCase();
     if (key === 's' && state.ready) {
       event.preventDefault();
       saveNote();
-      return;
-    }
-    const target = event.target;
-    if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]')) {
       return;
     }
     if (canEdit() && (key === 'z' || key === 'y')) {
@@ -778,6 +1000,9 @@
   window.addEventListener('pageshow', () => {
     state.pageActive = true;
   });
+  window.addEventListener('resize', () => {
+    state.textAnnotations?.render();
+  });
 
   async function loadSession() {
     const parameters = new URLSearchParams(window.location.search);
@@ -797,7 +1022,8 @@
       return;
     }
     const Canvas = window.AirWriteCanvas;
-    if (typeof Canvas !== 'function' || ['getPoint', 'setStrokes', 'getStrokes'].some((method) => typeof Canvas.prototype[method] !== 'function')) {
+    if (typeof Canvas !== 'function' || ['getPoint', 'setStrokes', 'getStrokes'].some((method) => typeof Canvas.prototype[method] !== 'function') ||
+        typeof globalThis.AirWriteTextAnnotations !== 'function') {
       showLoadError('The drawing workspace is unavailable', 'Reload the AirWrite extension with its snapshot-enabled drawing engine, then reopen this session.');
       return;
     }
@@ -857,11 +1083,13 @@
       ui.editor.hidden = false;
       state.engine = new Canvas(ui.canvas, { logicalWidth: width, logicalHeight: height });
       state.engine.setStrokes(Array.isArray(record.strokes) ? record.strokes : []);
+      initializeTextAnnotations();
+      state.textAnnotations.setAnnotations(Array.isArray(record.annotations) ? record.annotations : []);
       state.engine.setTool('pen');
       state.engine.setColor('#ff3b30');
       state.engine.setWidth(ui.width.value);
       ui.canvas.dataset.tool = 'pen';
-      state.currentSignature = signature(ui.title.value, state.engine.getStrokes());
+      state.currentSignature = signature(ui.title.value, state.engine.getStrokes(), annotationSnapshot());
       state.savedSignature = state.noteId === null ? null : state.currentSignature;
       state.ready = true;
       initializeAirwriting();

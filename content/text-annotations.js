@@ -26,7 +26,7 @@
   }
 
   class AirWriteTextAnnotations {
-    constructor(layer, { onPlace, onCreate, onEdit, onDelete, onMove, onEditorStateChange, defaultColor, defaultFontSize } = {}) {
+    constructor(layer, { onPlace, onCreate, onEdit, onDelete, onMove, onEditorStateChange, defaultColor, defaultFontSize, coordinateAdapter } = {}) {
       this.layer = layer;
       this.annotations = [];
       this.elements = new Map();
@@ -41,8 +41,14 @@
       this.onMove = typeof onMove === 'function' ? onMove : () => {};
       this.onEditorStateChange = typeof onEditorStateChange === 'function' ? onEditorStateChange : () => {};
       this.onPlace = typeof onPlace === 'function' ? onPlace : (point) => this.openEditor(point);
+      this.coordinateAdapter = coordinateAdapter || {
+        toDisplayPoint: (point) => ({ x: point.x, y: point.y }),
+        toLogicalPoint: (point) => ({ x: point.x, y: point.y }),
+        displayDeltaToLogical: (point) => ({ x: point.x, y: point.y }),
+        editorBounds: () => ({ width: window.innerWidth, height: window.innerHeight })
+      };
 
-      this.layer.className = 'airwrite-text-layer';
+      this.layer.className = `${this.layer.className || ''} airwrite-text-layer`.trim();
       this.layer.setAttribute('aria-label', 'AirWrite text annotations');
       this.layer.addEventListener('pointerdown', (event) => this.handleLayerPointerDown(event));
       this.layer.addEventListener('pointermove', (event) => this.handleDragMove(event));
@@ -157,9 +163,11 @@
       wrapper.className = 'airwrite-text-editor';
       wrapper.setAttribute('role', 'dialog');
       wrapper.setAttribute('aria-label', annotation ? 'Edit text annotation' : 'Place text annotation');
-      wrapper.style.left = `${source.x}px`;
-      wrapper.style.top = `${source.y}px`;
+      const displayPoint = this.coordinateAdapter.toDisplayPoint(source);
+      wrapper.style.left = `${displayPoint.x}px`;
+      wrapper.style.top = `${displayPoint.y}px`;
       wrapper.addEventListener('pointerdown', (event) => event.stopPropagation());
+      wrapper.addEventListener('keydown', (event) => event.stopPropagation());
 
       const textarea = document.createElement('textarea');
       textarea.rows = 3;
@@ -236,16 +244,19 @@
       textarea.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
+          event.stopPropagation();
           this.cancelEditor();
         } else if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();
+          event.stopPropagation();
           this.commitEditor();
         } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
           event.preventDefault();
+          event.stopPropagation();
           this.commitEditor();
         }
       });
-      this.positionEditor(wrapper, source.x, source.y);
+      this.positionEditor(wrapper, displayPoint.x, displayPoint.y);
       textarea.focus();
       if (annotation && typeof textarea.select === 'function') textarea.select();
       return true;
@@ -309,8 +320,9 @@
           this.layer.append(element);
         }
         element.textContent = annotation.text;
-        element.style.left = `${annotation.x}px`;
-        element.style.top = `${annotation.y}px`;
+        const displayPoint = this.coordinateAdapter.toDisplayPoint(annotation);
+        element.style.left = `${displayPoint.x}px`;
+        element.style.top = `${displayPoint.y}px`;
         element.style.color = annotation.color;
         element.style.fontSize = `${annotation.fontSize}px`;
         element.style.fontFamily = annotation.fontFamily;
@@ -340,8 +352,12 @@
 
     handleDragMove(event) {
       if (!this.drag || event.pointerId !== this.drag.pointerId) return;
-      const deltaX = event.clientX - this.drag.startX;
-      const deltaY = event.clientY - this.drag.startY;
+      const delta = this.coordinateAdapter.displayDeltaToLogical({
+        x: event.clientX - this.drag.startX,
+        y: event.clientY - this.drag.startY
+      });
+      const deltaX = delta.x;
+      const deltaY = delta.y;
       if (!this.drag.moved && Math.hypot(deltaX, deltaY) < 3) return;
       this.drag.moved = true;
       this.update(this.drag.id, { x: this.drag.originX + deltaX, y: this.drag.originY + deltaY });
@@ -376,17 +392,53 @@
       if (event.target !== this.layer) return;
       event.preventDefault();
       const rect = this.layer.getBoundingClientRect();
-      this.onPlace({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      this.onPlace(this.coordinateAdapter.toLogicalPoint({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      }));
     }
 
     positionEditor(wrapper, x, y) {
       const margin = 8;
       const width = wrapper.offsetWidth || 320;
       const height = wrapper.offsetHeight || 170;
-      const maxX = Math.max(margin, (window.innerWidth || width) - width - margin);
-      const maxY = Math.max(margin, (window.innerHeight || height) - height - margin);
+      const bounds = this.coordinateAdapter.editorBounds();
+      const maxX = Math.max(margin, (bounds.width || width) - width - margin);
+      const maxY = Math.max(margin, (bounds.height || height) - height - margin);
       wrapper.style.left = `${Math.min(Math.max(margin, x), maxX)}px`;
       wrapper.style.top = `${Math.min(Math.max(margin, y), maxY)}px`;
+    }
+
+    renderToCanvas(context, scale = 1) {
+      if (!context) return;
+      for (const annotation of this.annotations) {
+        const fontSize = annotation.fontSize * scale;
+        const padding = 6 * scale;
+        const lines = annotation.text.split('\n');
+        context.save();
+        context.font = `${fontSize}px ${annotation.fontFamily}`;
+        context.textBaseline = 'top';
+        const lineHeight = fontSize * annotation.lineHeight;
+        const width = Math.max(...lines.map((line) => context.measureText(line).width), 0) + padding * 2;
+        const height = lines.length * lineHeight + padding * 2;
+        const x = annotation.x * scale;
+        const y = annotation.y * scale;
+        context.fillStyle = 'rgba(22, 25, 35, 0.92)';
+        context.strokeStyle = 'rgba(255,255,255,0.72)';
+        context.lineWidth = Math.max(1, scale);
+        if (typeof context.roundRect === 'function') {
+          context.beginPath();
+          context.roundRect(x, y, width, height, 6 * scale);
+          context.fill();
+          context.stroke();
+        } else {
+          context.fillRect(x, y, width, height);
+          context.strokeRect(x, y, width, height);
+        }
+        context.fillStyle = annotation.color;
+        lines.forEach((line, index) => context.fillText(line, x + padding, y + padding + index * lineHeight));
+        context.restore();
+      }
     }
 
     button(label, className) {

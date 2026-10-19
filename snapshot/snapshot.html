@@ -110,6 +110,7 @@
           <div class="control-group" role="group" aria-label="Drawing tool">
             <button id="tool-pen" type="button" aria-pressed="true">Pen</button>
             <button id="tool-eraser" type="button" aria-pressed="false">Eraser</button>
+            <button id="text" type="button" class="tool-button" data-tool="text" aria-pressed="false">Text</button>
           </div>
           <div class="control-group colors" role="group" aria-label="Pen color">
             <button class="color-button color-red" type="button" data-color="#ff3b30" aria-label="Red pen" aria-pressed="true"><span class="swatch" aria-hidden="true"></span><span>Red</span></button>
@@ -129,13 +130,14 @@
         </fieldset>
 
         <div class="canvas-heading">
-          <p id="canvas-help">Draw with a mouse, pen, or touch. Escape cancels the current stroke. Ctrl/⌘ + Z undoes; Ctrl/⌘ + S saves.</p>
+          <p id="canvas-help">Draw with a mouse, pen, or touch. Select Text, click the screenshot, or press T while air-writing to place a note. Enter places text; Shift+Enter adds a line; Escape cancels. Ctrl/⌘ + Z undoes; Ctrl/⌘ + S saves.</p>
           <span id="image-dimensions" class="image-dimensions"></span>
         </div>
         <div class="image-viewport">
           <div id="image-stack" class="image-stack">
             <img id="screenshot" class="screenshot" alt="Captured webpage" draggable="false">
             <canvas id="annotation-canvas" class="annotation-canvas" tabindex="0" aria-label="Screenshot annotation canvas" aria-describedby="canvas-help" aria-disabled="true">Your browser needs Canvas support to annotate this screenshot.</canvas>
+            <div id="text-annotation-layer" class="text-annotation-layer" aria-label="Text annotations"></div>
             <span id="airwriting-cursor" class="airwriting-cursor" hidden aria-hidden="true"></span>
           </div>
         </div>
@@ -145,6 +147,7 @@
     <noscript><p class="state-panel">Enable JavaScript to open and annotate a snapshot.</p></noscript>
     <script src="../storage/notes.js"></script>
     <script src="../content/canvas.js"></script>
+    <script src="../content/text-annotations.js"></script>
     <script src="../camera/hand-tracking.js"></script>
     <script src="../vendor/mediapipe/vision_bundle.js"></script>
     <script src="../camera/mediapipe-adapter.js"></script>

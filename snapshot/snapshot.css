@@ -628,13 +628,133 @@ h1 {
   cursor: cell;
 }
 
+.text-annotation-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  line-height: normal;
+}
+
+.text-annotation-layer .airwrite-text-annotation {
+  position: absolute;
+  max-width: 70%;
+  width: max-content;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 7px;
+  padding: 6px 10px;
+  background: rgba(22, 25, 35, 0.92);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+  color: #fff;
+  cursor: grab;
+  pointer-events: auto;
+  user-select: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.text-annotation-layer .airwrite-text-annotation:active {
+  cursor: grabbing;
+}
+
+.text-annotation-layer .airwrite-text-annotation:hover,
+.text-annotation-layer .airwrite-text-annotation:focus {
+  border-color: #a99fff;
+  background: rgba(22, 25, 35, 0.96);
+  box-shadow: 0 0 0 2px rgba(169, 159, 255, 0.4), 0 4px 14px rgb(0 0 0 / 45%);
+}
+
+.text-annotation-layer .airwrite-text-editor {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  width: min(340px, calc(100% - 16px));
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 9px;
+  background: rgba(28, 31, 43, 0.98);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+  color: #fff;
+  font: 13px/1.2 Arial, sans-serif;
+  pointer-events: auto;
+}
+
+.text-annotation-layer .airwrite-text-editor textarea {
+  min-height: 64px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #a9afc2;
+  border-radius: 5px;
+  padding: 6px;
+  color: #222;
+  background: #fff;
+  font: 15px/1.25 Arial, sans-serif;
+}
+
+.text-annotation-layer .airwrite-text-editor-controls,
+.text-annotation-layer .airwrite-text-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.text-annotation-layer .airwrite-text-editor-controls {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.text-annotation-layer .airwrite-text-editor-actions {
+  margin-left: auto;
+}
+
+.text-annotation-layer .airwrite-text-editor button {
+  border: 0;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: #5b4bdb;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.text-annotation-layer .airwrite-text-editor button:hover {
+  background: #7668ee;
+}
+
+.text-annotation-layer .airwrite-text-color {
+  width: 17px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 2px solid rgb(255 255 255 / 65%);
+  border-radius: 50%;
+}
+
+.text-annotation-layer .airwrite-text-color[aria-pressed="true"] {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.text-annotation-layer .airwrite-text-editor input[type="number"] {
+  width: 48px;
+}
+
+.text-annotation-layer .airwrite-text-editor-hint {
+  color: #c8ccd8;
+}
+
 .annotation-canvas[aria-disabled="true"] {
   cursor: wait;
 }
 
 .airwriting-cursor {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   width: 18px;
   height: 18px;
   transform: translate(-50%, -50%);

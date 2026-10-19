@@ -126,9 +126,21 @@ async function main() {
       return AirWriteNotes.createDraft({ screenshot, pageTitle: 'Local fixture', url: ${JSON.stringify(origin)} });
     })()`);
     await connection.send('Page.navigate', { url: `${extension}/snapshot/snapshot.html?draft=${draftId}` }, session);
-    await waitFor(() => connection.evaluate(session, 'document.querySelector("#save-note")?.disabled === false'), 'snapshot editor');
-    assert.equal(await connection.evaluate(session, 'document.querySelector("#save-state").textContent'), 'Unsaved capture');
-    async function draw(from, to) {
+     await waitFor(() => connection.evaluate(session, 'document.querySelector("#save-note")?.disabled === false'), 'snapshot editor');
+     assert.equal(await connection.evaluate(session, 'document.querySelector("#save-state").textContent'), 'Unsaved capture');
+     await connection.evaluate(session, 'document.querySelector("#text").click()');
+     await connection.evaluate(session, 'document.querySelector("#image-stack").scrollIntoView({ block: "center" })');
+     const textRect = await connection.evaluate(session, `(() => {
+       const r = document.querySelector('#image-stack').getBoundingClientRect();
+       return { x: r.left + r.width * 0.35, y: r.top + r.height * 0.35 };
+     })()`);
+     await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', buttons: 1, clickCount: 1, x: textRect.x, y: textRect.y }, session);
+     await connection.send('Input.insertText', { text: 'Snapshot text' }, session);
+     await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, session);
+     await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, session);
+     assert.equal(await connection.evaluate(session, 'document.querySelectorAll("#text-annotation-layer .airwrite-text-annotation").length'), 1);
+     await connection.evaluate(session, 'document.querySelector("#tool-pen").click()');
+     async function draw(from, to) {
       await connection.evaluate(session, 'document.querySelector("#annotation-canvas").scrollIntoView({ block: "center" })');
       const rect = await connection.evaluate(session, `(() => {
         const r = document.querySelector('#annotation-canvas').getBoundingClientRect();
@@ -154,8 +166,9 @@ async function main() {
       const original = HTMLCanvasElement.prototype.toBlob;
       HTMLCanvasElement.prototype.toBlob = function(callback, ...args) {
         window.smokePixels = {
-          background: [...this.getContext('2d').getImageData(400, 300, 1, 1).data],
-          ink: [...this.getContext('2d').getImageData(250, 300, 1, 1).data]
+           background: [...this.getContext('2d').getImageData(400, 300, 1, 1).data],
+           ink: [...this.getContext('2d').getImageData(250, 300, 1, 1).data],
+           text: [...this.getContext('2d').getImageData(282, 212, 1, 1).data]
         };
         return original.call(this, blob => { window.smokePng = blob.type; callback(blob); }, ...args);
       };
@@ -168,8 +181,9 @@ async function main() {
     await waitFor(() => connection.evaluate(session, 'window.smokeFilename'), 'PNG export');
     const pixels = await connection.evaluate(session, 'window.smokePixels');
     assert.deepEqual(pixels.background, [255, 255, 255, 255], 'eraser must leave the screenshot intact');
-    assert.equal(pixels.ink[0], 255);
-    assert.ok(pixels.ink[1] < 100);
+     assert.equal(pixels.ink[0], 255);
+     assert.ok(pixels.ink[1] < 100);
+     assert.ok(pixels.text[0] < 100, 'export must include the text badge');
     assert.equal(await connection.evaluate(session, 'window.smokePng'), 'image/png');
     assert.equal(await connection.evaluate(session, 'document.querySelector("#save-state").textContent'), 'Unsaved capture');
     await connection.evaluate(session, 'document.querySelector("#save-note").click()');
@@ -182,10 +196,11 @@ async function main() {
     const summary = await connection.evaluate(session, `(async () => {
       const note = await AirWriteNotes.getNote(${JSON.stringify(noteId)});
       const usage = await AirWriteNotes.getStorageUsage();
-      return { strokes: note.strokes.length, x: note.strokes[0].points[0].x, width: note.imageWidth, height: note.imageHeight,
+       return { strokes: note.strokes.length, annotations: note.annotations.length, x: note.strokes[0].points[0].x, width: note.imageWidth, height: note.imageHeight,
         type: note.screenshot.type, bytes: note.screenshot.size, storageWarning: usage.storageWarning, percent: usage.percent };
     })()`);
-    assert.equal(summary.strokes, 2);
+     assert.equal(summary.strokes, 2);
+     assert.equal(summary.annotations, 1);
     assert.equal(summary.x, 200);
     assert.equal(summary.width, 800);
     assert.equal(summary.height, 600);
@@ -199,8 +214,9 @@ async function main() {
     await connection.evaluate(session, 'document.querySelector("#save-note").click()');
     await waitFor(() => connection.evaluate(session, 'document.querySelector("#save-state").textContent === "Saved locally"'), 'resized note save');
     assert.equal(await connection.evaluate(session, `(async () => (await AirWriteNotes.getNote(${JSON.stringify(noteId)})).strokes[2].points[0].x)()`), 200);
-    await connection.send('Page.reload', {}, session);
-    await waitFor(() => connection.evaluate(session, 'document.querySelector("#save-note")?.disabled === false'), 'reopened saved note');
+     await connection.send('Page.reload', {}, session);
+     await waitFor(() => connection.evaluate(session, 'document.querySelector("#save-note")?.disabled === false'), 'reopened saved note');
+     assert.equal(await connection.evaluate(session, 'document.querySelectorAll("#text-annotation-layer .airwrite-text-annotation").length'), 1);
     assert.ok(await connection.evaluate(session, 'document.querySelector("#annotation-canvas").getContext("2d").getImageData(250,150,1,1).data[3] > 0'));
     await connection.evaluate(session, 'document.querySelector("#clear").click(); document.querySelector("#undo").click()');
     assert.equal(await connection.evaluate(session, 'document.querySelector("#save-state").textContent'), 'Saved locally');
@@ -290,7 +306,7 @@ async function main() {
     assert.equal(cameraAssets.tracker, 'object');
     assert.equal(cameraAssets.state, 'Camera off');
     assert.equal(cameraAssets.startDisabled, false);
-    console.log('Chrome smoke passed: real IndexedDB/local storage, pointer drawing, eraser/export pixels, resize/reopen, rename/delete/discard, missing-note errors, Trusted Types injection, Browse hit testing, hide/show, collapsed mode indicator, and packaged camera assets/state.');
+     console.log('Chrome smoke passed: real IndexedDB/local storage, snapshot text placement/persistence, pointer drawing, eraser/export pixels, resize/reopen, rename/delete/discard, missing-note errors, Trusted Types injection, Browse hit testing, hide/show, collapsed mode indicator, and packaged camera assets/state.');
     console.log('Capture permission/user-gesture flow and actual download prompts still require the manual Chrome checklist.');
   } finally {
     if (connection) {

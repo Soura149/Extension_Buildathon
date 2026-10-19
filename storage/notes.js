@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const DATABASE_VERSION = 2;
+  const DATABASE_VERSION = 3;
   const SCHEMA_VERSION = 1;
   const DATABASE = 'AirWriteNotes';
   const PREFIX = 'airwrite.note.v1.';
@@ -101,7 +101,8 @@
   function noteSize(metadata, payload) {
     return payload.screenshot.size + byteLength({
       ...publicMetadata(metadata),
-      strokes: payload.strokes
+      strokes: payload.strokes,
+      annotations: payload.annotations
     });
   }
 
@@ -136,6 +137,35 @@
     const serialized = JSON.stringify(value);
     const clone = structuredClone(value);
     if (JSON.stringify(clone) !== serialized) throw new Error('Invalid stroke data.');
+    return clone;
+  }
+
+  function checkAnnotations(value) {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value)) throw new Error('Text annotations must be an array.');
+    const raw = structuredClone(value);
+    if (JSON.stringify(raw) !== JSON.stringify(value)) throw new Error('Invalid text annotation data.');
+    const clone = raw.map((annotation) => ({
+      ...annotation,
+      type: annotation?.type || 'text',
+      fontFamily: annotation?.fontFamily || 'sans-serif',
+      lineHeight: annotation?.lineHeight === undefined ? 1.25 : annotation.lineHeight,
+      createdAt: annotation?.createdAt === undefined ? 0 : annotation.createdAt,
+      updatedAt: annotation?.updatedAt === undefined ? 0 : annotation.updatedAt
+    }));
+    const ids = new Set();
+    for (const annotation of clone) {
+      if (!annotation || typeof annotation.id !== 'string' || !annotation.id.trim() || ids.has(annotation.id) ||
+          annotation.type !== 'text' || !Number.isFinite(annotation.x) || !Number.isFinite(annotation.y) ||
+          typeof annotation.text !== 'string' || !annotation.text.trim() ||
+          typeof annotation.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(annotation.color) ||
+          !Number.isFinite(annotation.fontSize) || annotation.fontSize < 8 || annotation.fontSize > 96 ||
+          annotation.fontFamily !== 'sans-serif' || annotation.lineHeight !== 1.25 ||
+          !Number.isFinite(annotation.createdAt) || !Number.isFinite(annotation.updatedAt)) {
+        throw new Error('Invalid text annotation data.');
+      }
+      ids.add(annotation.id);
+    }
     return clone;
   }
 
@@ -181,7 +211,7 @@
         let rejected = false;
         request.onupgradeneeded = () => {
           const database = request.result;
-            for (const store of ['screenshots', 'strokes', 'drafts', 'notes']) {
+            for (const store of ['screenshots', 'strokes', 'annotations', 'drafts', 'notes']) {
             if (!database.objectStoreNames.contains(store)) database.createObjectStore(store);
           }
         };
@@ -276,13 +306,15 @@
   }
 
   async function readPayload(metadata) {
-    const payload = await transaction(['screenshots', 'strokes'], 'readonly', (tx) => ({
+    const payload = await transaction(['screenshots', 'strokes', 'annotations'], 'readonly', (tx) => ({
       screenshot: tx.objectStore('screenshots').get(metadata.screenshotKey),
-      strokes: tx.objectStore('strokes').get(metadata.strokesKey)
+      strokes: tx.objectStore('strokes').get(metadata.strokesKey),
+      ...(metadata.annotationsKey ? { annotations: tx.objectStore('annotations').get(metadata.annotationsKey) } : {})
     }));
     if (!(payload.screenshot instanceof Blob) || !Array.isArray(payload.strokes)) {
       throw new Error('Saved note image or strokes are missing or damaged.');
     }
+    payload.annotations = checkAnnotations(payload.annotations);
     return payload;
   }
 
@@ -293,17 +325,19 @@
     }
   }
 
-  async function removePayload(screenshotKey, strokesKey) {
-    await transaction(['screenshots', 'strokes'], 'readwrite', (tx) => {
+  async function removePayload(screenshotKey, strokesKey, annotationsKey) {
+    await transaction(['screenshots', 'strokes', 'annotations'], 'readwrite', (tx) => {
       const requests = {};
       if (screenshotKey) requests.image = tx.objectStore('screenshots').delete(screenshotKey);
       if (strokesKey) requests.strokes = tx.objectStore('strokes').delete(strokesKey);
+      if (annotationsKey) requests.annotations = tx.objectStore('annotations').delete(annotationsKey);
       return requests;
     });
-    const result = await transaction(['screenshots', 'strokes'], 'readonly', (tx) => {
+    const result = await transaction(['screenshots', 'strokes', 'annotations'], 'readonly', (tx) => {
       const requests = {};
       if (screenshotKey) requests.image = tx.objectStore('screenshots').get(screenshotKey);
       if (strokesKey) requests.strokes = tx.objectStore('strokes').get(strokesKey);
+      if (annotationsKey) requests.annotations = tx.objectStore('annotations').get(annotationsKey);
       return requests;
     });
     if (Object.values(result).some((value) => value !== undefined)) {
@@ -322,6 +356,7 @@
   async function saveNote(input) {
     const id = input.id === undefined ? uuid() : checkId(input.id);
     const strokes = checkStrokes(input.strokes);
+    const annotations = checkAnnotations(input.annotations);
     const fields = {
       title: title(input.title), pageTitle: text(input.pageTitle), url: text(input.url),
       imageWidth: checkDimension(input.imageWidth), imageHeight: checkDimension(input.imageHeight)
@@ -336,30 +371,32 @@
         createdAt: previous?.createdAt || timestamp(input.createdAt),
         updatedAt: new Date().toISOString()
       };
-      const candidateSize = noteSize(candidateBase, { screenshot, strokes });
+      const candidateSize = noteSize(candidateBase, { screenshot, strokes, annotations });
       if (usage.bytesUsed + candidateSize > MAX_STORAGE_BYTES) throw new Error(STORAGE_LIMIT_ERROR);
       const replaceImage = !oldPayload || !await sameBlob(screenshot, oldPayload.screenshot);
       const metadata = {
         ...candidateBase,
         screenshotKey: replaceImage ? uuid() : previous.screenshotKey,
         strokesKey: uuid(),
+        annotationsKey: uuid(),
         storageBytes: candidateSize
       };
-      await transaction(['screenshots', 'strokes', 'notes'], 'readwrite', (tx) => {
+      await transaction(['screenshots', 'strokes', 'annotations', 'notes'], 'readwrite', (tx) => {
         const requests = { strokes: tx.objectStore('strokes').put(strokes, metadata.strokesKey) };
+        requests.annotations = tx.objectStore('annotations').put(annotations, metadata.annotationsKey);
         if (replaceImage) requests.image = tx.objectStore('screenshots').put(screenshot, metadata.screenshotKey);
-        requests.note = tx.objectStore('notes').put({ ...metadata, strokes }, id);
+        requests.note = tx.objectStore('notes').put({ ...metadata, strokes, annotations }, id);
         return requests;
       });
       const verified = await readPayload(metadata);
-      if (!await sameBlob(verified.screenshot, screenshot) || !equal(verified.strokes, strokes)) {
+      if (!await sameBlob(verified.screenshot, screenshot) || !equal(verified.strokes, strokes) || !equal(verified.annotations, annotations)) {
         throw new Error('Note payload readback did not match the write.');
       }
       await writeMetadata(metadata);
       if (previous) {
-        await removePayload(replaceImage ? previous.screenshotKey : null, previous.strokesKey);
+        await removePayload(replaceImage ? previous.screenshotKey : null, previous.strokesKey, previous.annotationsKey);
         await transaction(['notes'], 'readwrite', (tx) => ({ note: tx.objectStore('notes').delete(id) }));
-        await transaction(['notes'], 'readwrite', (tx) => ({ note: tx.objectStore('notes').put({ ...metadata, strokes }, id) }));
+        await transaction(['notes'], 'readwrite', (tx) => ({ note: tx.objectStore('notes').put({ ...metadata, strokes, annotations }, id) }));
       }
       return { ...publicMetadata(metadata), ...verified };
     }));
@@ -408,11 +445,17 @@
       note: tx.objectStore('notes').get(id)
     }));
     if (indexed.note) {
-      const payload = await transaction(['screenshots'], 'readonly', (tx) => ({
-        screenshot: tx.objectStore('screenshots').get(indexed.note.screenshotKey)
+      const payload = await transaction(['screenshots', 'annotations'], 'readonly', (tx) => ({
+        screenshot: tx.objectStore('screenshots').get(indexed.note.screenshotKey),
+        ...(indexed.note.annotationsKey ? { annotations: tx.objectStore('annotations').get(indexed.note.annotationsKey) } : {})
       }));
       if (!(payload.screenshot instanceof Blob)) throw new Error('Saved note screenshot is missing or damaged.');
-      return { ...publicMetadata(indexed.note), screenshot: payload.screenshot, strokes: structuredClone(indexed.note.strokes) };
+      return {
+        ...publicMetadata(indexed.note),
+        screenshot: payload.screenshot,
+        strokes: structuredClone(indexed.note.strokes || []),
+        annotations: checkAnnotations(payload.annotations || indexed.note.annotations)
+      };
     }
     return getNote(id);
   }
@@ -442,7 +485,7 @@
       if (!metadata) return;
       await localStorage().remove(keyFor(id));
       if (await readMetadata(id)) throw new Error('Note metadata deletion could not be verified.');
-      await removePayload(metadata.screenshotKey, metadata.strokesKey);
+      await removePayload(metadata.screenshotKey, metadata.strokesKey, metadata.annotationsKey);
       await transaction(['notes'], 'readwrite', (tx) => ({ note: tx.objectStore('notes').delete(id) }));
     }));
   }
@@ -463,15 +506,17 @@
   }
 
   async function removeDraft(draft) {
-    await transaction(['drafts', 'screenshots', 'strokes'], 'readwrite', (tx) => ({
+    await transaction(['drafts', 'screenshots', 'strokes', 'annotations'], 'readwrite', (tx) => ({
       draft: tx.objectStore('drafts').delete(draft.id),
       image: tx.objectStore('screenshots').delete(draft.screenshotKey),
-      strokes: tx.objectStore('strokes').delete(draft.strokesKey)
+      strokes: tx.objectStore('strokes').delete(draft.strokesKey),
+      ...(draft.annotationsKey ? { annotations: tx.objectStore('annotations').delete(draft.annotationsKey) } : {})
     }));
-    const remaining = await transaction(['drafts', 'screenshots', 'strokes'], 'readonly', (tx) => ({
+    const remaining = await transaction(['drafts', 'screenshots', 'strokes', 'annotations'], 'readonly', (tx) => ({
       draft: tx.objectStore('drafts').get(draft.id),
       image: tx.objectStore('screenshots').get(draft.screenshotKey),
-      strokes: tx.objectStore('strokes').get(draft.strokesKey)
+      strokes: tx.objectStore('strokes').get(draft.strokesKey),
+      ...(draft.annotationsKey ? { annotations: tx.objectStore('annotations').get(draft.annotationsKey) } : {})
     }));
     if (Object.values(remaining).some((value) => value !== undefined)) {
       throw new Error('Draft deletion could not be verified.');
@@ -484,7 +529,7 @@
     const draft = {
       schemaVersion: SCHEMA_VERSION, id: uuid(), title: title(pageTitle), pageTitle,
       url: text(input.url), createdAt: timestamp(input.createdAt),
-      screenshotKey: uuid(), strokesKey: uuid()
+      screenshotKey: uuid(), strokesKey: uuid(), annotationsKey: uuid()
     };
     return locked('drafts', async () => {
       const { drafts } = await transaction(['drafts'], 'readonly', (tx) => ({
@@ -493,14 +538,15 @@
       for (const oldDraft of drafts) {
         if (Date.parse(oldDraft.createdAt) <= Date.now() - DAY) await removeDraft(oldDraft);
       }
-      await transaction(['drafts', 'screenshots', 'strokes'], 'readwrite', (tx) => ({
+      await transaction(['drafts', 'screenshots', 'strokes', 'annotations'], 'readwrite', (tx) => ({
         draft: tx.objectStore('drafts').put(draft, draft.id),
         image: tx.objectStore('screenshots').put(screenshot, draft.screenshotKey),
-        strokes: tx.objectStore('strokes').put([], draft.strokesKey)
+        strokes: tx.objectStore('strokes').put([], draft.strokesKey),
+        annotations: tx.objectStore('annotations').put([], draft.annotationsKey)
       }));
       const verified = await readDraft(draft.id);
       if (!verified || verified.title !== draft.title || verified.pageTitle !== pageTitle || verified.url !== draft.url ||
-          verified.createdAt !== draft.createdAt || !equal(verified.strokes, []) ||
+          verified.createdAt !== draft.createdAt || !equal(verified.strokes, []) || !equal(verified.annotations, []) ||
           !await sameBlob(verified.screenshot, screenshot)) {
         throw new Error('Draft readback did not match the write.');
       }

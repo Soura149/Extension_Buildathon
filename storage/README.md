@@ -28,13 +28,14 @@ array is used:
 }
 ```
 
-IndexedDB database `AirWriteNotes` (version 2) contains separate object stores:
+IndexedDB database `AirWriteNotes` (version 3) contains separate object stores:
 
 - `notes`: note ID → metadata, storage byte count, screenshot/stroke links, and
   editable stroke array.
 - `screenshots`: screenshot key → compressed raster image `Blob`.
 - `strokes`: stroke key → editable stroke array (kept as a payload link for
   compatibility and verified independently).
+- `annotations`: annotation key → editable text annotation array.
 - `drafts`: draft ID → temporary metadata and image/stroke references.
 
 Stroke coordinates and widths are in original screenshot pixels, regardless of
@@ -57,7 +58,8 @@ to saved-note compression.
 
 The application cap is **50 MiB (displayed in errors as 50 MB)** for all saved
 notes. A note's accounted size is the compressed screenshot Blob bytes plus the
-UTF-8 byte size of its metadata and editable stroke array. `getStorageUsage()`
+UTF-8 byte size of its metadata, editable stroke array, and text annotation
+array. `getStorageUsage()`
 returns `{ bytesUsed, percent, storageWarning, maxBytes }`; `storageWarning` is
 true at 45 MiB (90%) or above. `getNotes()` exposes the same warning and usage
 fields as non-indexed properties on its metadata array while retaining the
@@ -79,7 +81,8 @@ ordinary storage errors.
 `renameNote`, and `deleteNote`, plus the Phase D names `getNotes`,
 `getNoteById`, and `getStorageUsage`. Missing notes/drafts return `null`. Errors reject
 instead of claiming success. Full note reads return a screenshot Blob and cloned
-stroke data; list reads return only public metadata without storage keys.
+stroke and text annotation data; list reads return only public metadata without
+storage keys.
 
 Save stages a new strokes payload (and a new image only if changed), verifies
 readback, publishes metadata, then removes superseded payloads. Web Locks
