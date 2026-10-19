@@ -1,10 +1,11 @@
 (() => {
   class AirWriteToolbar {
-    constructor({ onModeChange, onToolChange, onColorChange, onWidthChange, onUndo, onRedo, onClear, onHide }) {
+    constructor({ onModeChange, onToolChange, onColorChange, onWidthChange, onTextSizeChange, onUndo, onRedo, onClear, onHide }) {
       this.onModeChange = onModeChange;
       this.onToolChange = onToolChange;
       this.onColorChange = onColorChange;
       this.onWidthChange = onWidthChange;
+      this.onTextSizeChange = typeof onTextSizeChange === 'function' ? onTextSizeChange : () => {};
       this.onUndo = onUndo;
       this.onRedo = onRedo;
       this.onClear = onClear;
@@ -36,6 +37,7 @@
       controls.append(
         this.createButton('Pen', { tool: 'pen', ariaPressed: 'true' }),
         this.createButton('Eraser', { tool: 'eraser', ariaPressed: 'false' }),
+        this.createButton('Text', { tool: 'text', ariaPressed: 'false', title: 'Place editable text annotation' }),
         this.createDivider()
       );
 
@@ -68,6 +70,21 @@
       widthLabel.append(widthInput);
       controls.append(widthLabel, this.createDivider());
 
+      const textSizeLabel = this.createElement('label', null, {
+        className: 'airwrite-text-size',
+        title: 'Text size'
+      });
+      textSizeLabel.append(this.createElement('span', 'Text', { ariaHidden: 'true' }));
+      const textSizeInput = document.createElement('input');
+      textSizeInput.type = 'range';
+      textSizeInput.min = '8';
+      textSizeInput.max = '64';
+      textSizeInput.value = '20';
+      textSizeInput.setAttribute('data-text-size', '');
+      textSizeInput.setAttribute('aria-label', 'Text size');
+      textSizeLabel.append(textSizeInput);
+      controls.append(textSizeLabel, this.createDivider());
+
       controls.append(
         this.createButton('Undo', { action: 'undo' }),
         this.createButton('Redo', { action: 'redo' }),
@@ -81,6 +98,9 @@
       this.element.addEventListener('input', (event) => {
         if (event.target.matches('[data-width]')) {
           this.onWidthChange(event.target.value);
+        }
+        if (event.target.matches('[data-text-size]')) {
+          this.onTextSizeChange(event.target.value);
         }
       });
       this.setMode('draw');
@@ -113,8 +133,8 @@
       return element;
     }
 
-    createButton(label, { className, action, mode, tool, color, ariaLabel, ariaPressed } = {}) {
-      const button = this.createElement('button', label, { className, ariaLabel, ariaPressed });
+    createButton(label, { className, action, mode, tool, color, ariaLabel, ariaPressed, title } = {}) {
+      const button = this.createElement('button', label, { className, ariaLabel, ariaPressed, title });
       button.type = 'button';
       if (action) {
         button.dataset.action = action;
@@ -152,6 +172,8 @@
       const tool = button.dataset.tool;
       if (tool) {
         this.setTool(tool);
+        this.setMode('draw');
+        this.onModeChange('draw');
         this.onToolChange(tool);
         return;
       }

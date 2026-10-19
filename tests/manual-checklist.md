@@ -27,6 +27,21 @@ allow content-script injection.
 - [ ] Switching modes does not clear existing strokes.
 - [ ] Toolbar controls remain usable in both modes.
 - [ ] A cancelled or interrupted pointer does not leave drawing stuck on.
+- [ ] **Text** switches to placement mode without creating a pen stroke.
+- [ ] Clicking an empty position opens a focused floating editor near that point.
+- [ ] Enter places a single-line note; Shift+Enter inserts a newline; Escape
+      cancels; whitespace-only input creates nothing.
+- [ ] Place and Cancel controls are visible, and clicking outside the editor does
+      not commit or cancel it.
+- [ ] Text remains readable near each viewport edge because the editor stays in
+      the visible viewport.
+- [ ] Clicking an existing note in Text mode reopens it; cancel restores the old
+      text, while Place commits the edit.
+- [ ] Dragging moves a note, the editor colour/size controls restyle it, and
+      Delete removes it.
+- [ ] Text add/edit/move/delete can be undone and redone without breaking stroke
+      undo/redo.
+- [ ] Switching to Browse or Pen/Eraser cancels an open text editor safely.
 - [ ] The overlay works on a simple page, a long scrolling page, and a page with
       a fixed header.
 - [ ] Resizing the viewport keeps existing strokes aligned.

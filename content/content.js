@@ -36,6 +36,18 @@
           if (captureSession?.token === message.token) restoreCapture();
           sendResponse({ ok: true });
           break;
+        case 'AIRWRITE_INPUT_MOVE':
+          overlay.inputAdapter?.move(message.point);
+          sendResponse({ ok: true });
+          break;
+        case 'AIRWRITE_INPUT_SELECT':
+          overlay.inputAdapter?.select(message.point);
+          sendResponse({ ok: true });
+          break;
+        case 'AIRWRITE_INPUT_CANCEL':
+          overlay.inputAdapter?.cancel();
+          sendResponse({ ok: true });
+          break;
         default:
           sendResponse({ ok: false, error: 'Unknown AirWrite message.' });
       }

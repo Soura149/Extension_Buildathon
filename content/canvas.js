@@ -1,6 +1,7 @@
 (() => {
   class AirWriteCanvas {
-    constructor(canvas, { logicalWidth, logicalHeight } = {}) {
+    constructor(canvas, options = {}) {
+      const { logicalWidth, logicalHeight } = options;
       this.canvas = canvas;
       this.context = canvas.getContext('2d');
       if (!this.context) {
@@ -17,6 +18,7 @@
       this.strokes = [];
       this.undoStack = [];
       this.redoStack = [];
+      this.historyEnabled = options.history !== false;
       this.activeStroke = null;
       this.tool = 'pen';
       this.color = '#ff3b30';
@@ -112,8 +114,10 @@
       if (!this.activeStroke) {
         return;
       }
-      this.undoStack.push(this.cloneStrokes(this.strokes));
-      this.redoStack = [];
+      if (this.historyEnabled) {
+        this.undoStack.push(this.cloneStrokes(this.strokes));
+        this.redoStack = [];
+      }
       this.strokes.push(this.activeStroke);
       this.activeStroke = null;
       this.render();

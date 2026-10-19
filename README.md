@@ -19,6 +19,13 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 - Undo and redo for strokes and clear.
 - Clear and hide/show controls.
 - Collapsible toolbar.
+- **Text** tool for mouse-placed, editable annotations over the live webpage.
+- Multiline floating text editor: Enter places, Shift+Enter inserts a newline,
+  and Escape cancels.
+- Existing text can be selected, edited, moved, recoloured, resized, or deleted.
+- Text add/edit/move/delete operations share undo/redo history with pen strokes.
+- Mouse selection is exposed through a small input adapter so a future fingertip
+  selection event can use the same text workflow without owning annotation data.
 - HiDPI canvas sizing and redraw after viewport resize.
 - **Capture & Annotate** opens a separate Snapshot Canvas workspace.
 - Snapshot pen/eraser, colours, width, undo/redo, and undoable clear reuse the
@@ -40,6 +47,8 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
 
 - Live Overlay webcam input; Snapshot Canvas air-writing remains experimental
   until the manual camera and performance checks pass.
+- Live Overlay text annotations are page-lifetime only; they are not yet included
+  in saved Snapshot Canvas note payloads.
 - Full-page scrolling capture.
 - Live-overlay drawing persistence across page reloads (snapshot notes persist).
 - Cloud sync, collaboration, and annotation autosave.
@@ -70,7 +79,24 @@ The extension has no runtime dependencies and does not require a backend.
 5. Open an ordinary HTTP(S) webpage.
 6. Click the AirWrite extension icon and select **Enable overlay**.
 7. Use **Browse** when interacting with the webpage and **Draw** when adding an
-   annotation. The current mode is shown in the overlay toolbar.
+    annotation. The current mode is shown in the overlay toolbar. Choose
+    **Text**, click where the note should start, type, and choose **Place** (or
+    press Enter). Use Shift+Enter for a new line.
+
+## Live text annotations
+
+The live overlay stores text separately from freehand stroke points. Coordinates
+are viewport-relative CSS pixels (`x` from the left edge and `y` from the top
+edge), so the note stays anchored to the current viewport while the page is
+loaded. The editor is clamped inside the visible viewport; the saved annotation
+position remains the point selected by the user. Clicking an existing note in
+Text mode reopens it. Drag it to move it, use the editor colour/size controls to
+restyle it, or use Delete. Clicking outside an open editor does nothing: use the
+explicit Place or Cancel action.
+
+Undo and redo use a unified live-overlay history containing both strokes and
+text annotations. Hide/show preserves this in-memory page-lifetime state. A
+refresh or navigation still clears live annotations, as it did for strokes.
 
 After changing extension files, use **Reload** on the extension and refresh the
 test webpage. If the active page is restricted, the popup shows an explanation.
