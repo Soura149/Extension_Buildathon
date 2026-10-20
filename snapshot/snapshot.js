@@ -177,7 +177,9 @@
     if (!state.textAnnotations || !canEdit()) return false;
     if (stopActiveCamera) stopCamera('text-editor');
     state.textAnnotations.setEnabled(true);
-    return state.textAnnotations.openEditor(point);
+    const opened = state.textAnnotations.openEditor(point);
+    if (opened) ui.stack?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return opened;
   }
 
   function openTextAtAirPoint() {
@@ -185,6 +187,12 @@
     const now = Date.now();
     if (now - (state.lastTextClosedAt || 0) < 600) return false;
     endCameraStroke('text-editor', false);
+    if (state.handwritingActiveStroke) {
+      state.handwritingCollector?.end();
+      state.handwritingActiveStroke = false;
+      state.handwritingLastPoint = null;
+      updateHandwritingButtons();
+    }
     setTextTool(true);
     state.textGesturePaused = true;
     const point = currentAirPoint();
@@ -704,6 +712,9 @@
             : 'Stroke finished. Add more strokes or choose Recognize.');
           return;
         }
+        if (gesture === 'draw' && reason !== 'camera-error') {
+          setStatus('Air-writing stroke added. Save Note to keep it.');
+        }
         endCameraStroke(reason, false);
       }
     });
@@ -1215,7 +1226,20 @@
         openTextAtAirPoint();
       } else {
         selectTool('text');
-        setStatus('Text tool selected. Click on the screenshot to place a note.');
+        openTextAtImagePoint({ x: state.imageWidth / 2, y: state.imageHeight / 2 });
+        setStatus('Text editor opened. Type an annotation and press Enter to place it.');
+      }
+      return;
+    }
+    if (canEdit() && (state.textTool || isCameraActive) && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        event.key.length === 1 && !event.isComposing) {
+      const opened = isCameraActive
+        ? openTextAtAirPoint()
+        : openTextAtImagePoint(imagePoint(currentAirPoint()));
+      if (opened && state.textAnnotations?.editor?.textarea) {
+        state.textAnnotations.editor.textarea.value = event.key;
+        state.textAnnotations.editor.textarea.focus();
+        event.preventDefault();
       }
       return;
     }

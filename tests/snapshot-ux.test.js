@@ -50,6 +50,10 @@ test('snapshot text annotations expose the editor, keyboard trigger, scaling, hi
   assert.match(snapshot, /initializeTextAnnotations/);
   assert.match(snapshot, /coordinateAdapter: textCoordinateAdapter/);
   assert.match(snapshot, /event\.key\.toLowerCase\(\) === 't'/);
+  assert.match(snapshot, /\(state\.textTool \|\| isCameraActive\)/);
+  assert.match(snapshot, /isCameraActive\s*\?\s*openTextAtAirPoint\(\)/);
+  assert.match(snapshot, /textarea\.value = event\.key/);
+  assert.match(snapshot, /textarea\.focus\(\)/);
   assert.match(snapshot, /onCreate: \(draft\)/);
   assert.match(snapshot, /onMove: \(id, beforeAnnotation, afterAnnotation\)/);
   assert.match(snapshot, /annotations,/);
