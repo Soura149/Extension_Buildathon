@@ -93,7 +93,10 @@ capture; session progress is diagnostic state, not a resumable image checkpoint.
 1. Popup receives a user click and sends a capture request with tab/window IDs.
 2. Worker validates the sender and re-queries the active tab.
 3. Content script hides the live overlay and returns page geometry.
-4. Viewport capture calls `captureVisibleTab()` once.
+4. Viewport capture calls `captureVisibleTab()` once. Popup capture starts with
+   empty editable layers; the live overlay Save action requests the current live
+   strokes/text snapshot and scales those annotations from CSS viewport pixels
+   into the captured image's pixel space before creating the draft.
 5. Full-page capture scrolls in overlapping vertical steps, checks actual returned
    offsets and stable dimensions, decodes each PNG, and draws it into an
    extension-owned `OffscreenCanvas`.

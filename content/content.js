@@ -70,14 +70,16 @@
           break;
         case 'PREPARE_SNAPSHOT': {
           if (typeof message.token !== 'string' || captureSession) {
-          sendResponse({ ok: false, error: 'A capture is already pending.' });
+            sendResponse({ ok: false, error: 'A capture is already pending.' });
             break;
           }
+          const snapshot = message.includeAnnotations ? overlay.snapshot() : null;
+          const geometry = message.includeAnnotations ? pageGeometry() : null;
           const wasVisible = overlay.visible;
           overlay.hide();
           // Recover even if the worker or popup closes before restoring us.
           captureSession = { token: message.token, wasVisible, fullPage: false, timer: scheduleCaptureTimeout() };
-          sendResponse({ ok: true });
+          sendResponse({ ok: true, ...(snapshot ? { snapshot, geometry } : {}) });
           break;
         }
         case 'PREPARE_FULL_PAGE': {

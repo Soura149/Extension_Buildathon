@@ -59,6 +59,46 @@ importScripts('storage/notes.js');
     return { blob, bitmap: await globalThis.createImageBitmap(blob) };
   }
 
+  async function captureScale(screenshot, geometry) {
+    if (geometry && Number.isFinite(geometry.viewportWidth) && geometry.viewportWidth > 0 &&
+        typeof globalThis.createImageBitmap === 'function') {
+      let bitmap;
+      try {
+        bitmap = await globalThis.createImageBitmap(screenshot);
+        if (Number.isFinite(bitmap.width) && bitmap.width > 0) {
+          return bitmap.width / geometry.viewportWidth;
+        }
+      } catch {
+        // Fall back to the page-reported DPR when this browser cannot decode
+        // the captured PNG in the service worker.
+      } finally {
+        bitmap?.close?.();
+      }
+    }
+    return geometry && Number.isFinite(geometry.devicePixelRatio) && geometry.devicePixelRatio > 0
+      ? geometry.devicePixelRatio
+      : 1;
+  }
+
+  function scaleOverlaySnapshot(snapshot, scale) {
+    if (!snapshot || !Array.isArray(snapshot.strokes) || !Array.isArray(snapshot.annotations)) {
+      return { strokes: [], annotations: [] };
+    }
+    return {
+      strokes: snapshot.strokes.map((stroke) => ({
+        ...stroke,
+        width: stroke.width * scale,
+        points: stroke.points.map((point) => ({ x: point.x * scale, y: point.y * scale }))
+      })),
+      annotations: snapshot.annotations.map((annotation) => ({
+        ...annotation,
+        x: annotation.x * scale,
+        y: annotation.y * scale,
+        fontSize: annotation.fontSize * scale
+      }))
+    };
+  }
+
   function buildScrollPositions(geometry) {
     const maxScrollY = Math.max(0, geometry.documentHeight - geometry.viewportHeight);
     const step = Math.max(1, Math.floor(geometry.viewportHeight * 0.75));
@@ -227,7 +267,11 @@ importScripts('storage/notes.js');
       const tab = await selectedTab(message);
       // Fail rather than accidentally flattening the live toolbar/drawing. Tabs
       // opened before an extension reload must refresh their content script.
-      const response = await chrome.tabs.sendMessage(tab.id, { type: 'PREPARE_SNAPSHOT', token }, options);
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: 'PREPARE_SNAPSHOT',
+        token,
+        includeAnnotations: Boolean(message.includeAnnotations)
+      }, options);
       if (!response?.ok) throw new Error('Refresh this webpage to connect Overlayed, then try capturing again.');
       prepared = true;
       // Give Chrome a paint after hiding the overlay, before reading the pixels.
@@ -244,9 +288,18 @@ importScripts('storage/notes.js');
       }
       // This fetch decodes a local data URL; it makes no network request.
       const screenshot = await (await fetch(dataUrl)).blob();
+      const overlaySnapshot = message.includeAnnotations
+        ? scaleOverlaySnapshot(response.snapshot, await captureScale(screenshot, response.geometry))
+        : null;
       const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
       draftId = await notesApi.createDraft({
-        screenshot, pageTitle: tab.title || 'Untitled webpage', url: tab.url
+        screenshot,
+        pageTitle: tab.title || 'Untitled webpage',
+        url: tab.url,
+        ...(overlaySnapshot ? {
+          initialStrokes: overlaySnapshot.strokes,
+          initialAnnotations: overlaySnapshot.annotations
+        } : {})
       });
       await chrome.tabs.create({ url: chrome.runtime.getURL(`snapshot/snapshot.html?draft=${encodeURIComponent(draftId)}`) });
       return { ok: true };
@@ -307,7 +360,7 @@ importScripts('storage/notes.js');
         sendResponse({ ok: false, error: 'Capture must be started from the Overlayed page overlay.' });
         return false;
       }
-      capture({ tabId: sender.tab.id, windowId: sender.tab.windowId }).then(sendResponse, (error) => sendResponse({
+      capture({ tabId: sender.tab.id, windowId: sender.tab.windowId, includeAnnotations: true }).then(sendResponse, (error) => sendResponse({
         ok: false,
         error: error?.message || 'Capture failed. Keep the webpage active, refresh it after reloading Overlayed, and try again. Chrome may restrict capture or local storage may be full.'
       }));

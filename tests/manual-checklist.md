@@ -65,6 +65,9 @@ Reload the extension and refresh the source webpage before testing.
 - [ ] Clicking capture (not merely opening the popup) opens a separate workspace
       with only the visible viewport, correct source title/URL/date, and no live
       toolbar or live strokes baked into the image.
+- [ ] Clicking **Save** in the live Overlayed toolbar opens Snapshot Canvas with
+      completed live strokes and text annotations preserved and aligned over the
+      captured image; popup Capture & Annotate remains a clean capture.
 - [ ] Capture with a visible overlay restores its strokes and Browse/Draw mode
       on the source page. Capture with a hidden overlay keeps it hidden.
 - [ ] A capture failure or rapid tab/window switch shows an error instead of

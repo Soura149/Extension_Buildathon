@@ -548,6 +548,8 @@
   async function createDraft(input) {
     const screenshot = await compressScreenshot(input.screenshot);
     const pageTitle = text(input.pageTitle);
+    const strokes = checkStrokes(input.initialStrokes ?? []);
+    const annotations = checkAnnotations(input.initialAnnotations);
     const draft = {
       schemaVersion: SCHEMA_VERSION, id: uuid(), title: title(pageTitle), pageTitle,
       url: text(input.url), createdAt: timestamp(input.createdAt),
@@ -564,13 +566,13 @@
       await transaction(['drafts', 'screenshots', 'strokes', 'annotations'], 'readwrite', (tx) => ({
         draft: tx.objectStore('drafts').put(draft, draft.id),
         image: tx.objectStore('screenshots').put(screenshot, draft.screenshotKey),
-        strokes: tx.objectStore('strokes').put([], draft.strokesKey),
-        annotations: tx.objectStore('annotations').put([], draft.annotationsKey)
+        strokes: tx.objectStore('strokes').put(strokes, draft.strokesKey),
+        annotations: tx.objectStore('annotations').put(annotations, draft.annotationsKey)
       }));
       const verified = await readDraft(draft.id);
       if (!verified || verified.title !== draft.title || verified.pageTitle !== pageTitle || verified.url !== draft.url ||
           verified.captureMode !== draft.captureMode || verified.devicePixelRatio !== draft.devicePixelRatio ||
-          verified.createdAt !== draft.createdAt || !equal(verified.strokes, []) || !equal(verified.annotations, []) ||
+          verified.createdAt !== draft.createdAt || !equal(verified.strokes, strokes) || !equal(verified.annotations, annotations) ||
           !await sameBlob(verified.screenshot, screenshot)) {
         throw new Error('Draft readback did not match the write.');
       }
