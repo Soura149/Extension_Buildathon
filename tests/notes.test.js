@@ -102,6 +102,30 @@ test('getNotes exposes usage warning and the requested ID-based API', async () =
   assert.equal(usage.storageWarning, false);
 });
 
+test('capture metadata records full-page mode and remains backward-compatible by default', async () => {
+  const env = createEnvironment();
+  const api = env.load();
+  const fullPage = await api.saveNote(note({ captureMode: 'full-page', devicePixelRatio: 2 }));
+  assert.equal(fullPage.captureMode, 'full-page');
+  assert.equal(fullPage.devicePixelRatio, 2);
+  const reopened = await api.getNote(fullPage.id);
+  assert.equal(reopened.captureMode, 'full-page');
+  assert.equal(reopened.devicePixelRatio, 2);
+  const viewport = await api.saveNote(note({ title: 'Legacy viewport' }));
+  assert.equal(viewport.captureMode, 'viewport');
+  assert.equal(viewport.devicePixelRatio, 1);
+});
+
+test('getNotes merges compatibility-mirror notes with newer indexed notes', async () => {
+  const env = createEnvironment();
+  const api = env.load();
+  const legacy = await api.saveNote(note({ title: 'Legacy note' }));
+  const indexed = await api.saveNote(note({ title: 'Indexed note' }));
+  env.stores.get('notes').delete(legacy.id);
+  const recent = await api.getNotes();
+  assert.deepEqual(new Set(recent.map((entry) => entry.id)), new Set([legacy.id, indexed.id]));
+});
+
 test('the 50 MB cap includes screenshot and editable stroke bytes and preserves an old note on replacement failure', async () => {
   const env = createEnvironment();
   const api = env.load();

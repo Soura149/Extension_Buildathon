@@ -34,7 +34,7 @@
 
 ## 3. Text editor behavior
 
-- `Enter`: commit and place the note.
+- `Enter`: commit and place the note. v
 - `Shift + Enter`: insert a newline.
 - `Escape`: cancel. When editing an existing note, restore its previous content.
 - Empty/whitespace-only text: do not create an annotation.

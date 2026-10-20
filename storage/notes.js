@@ -131,6 +131,14 @@
     return value;
   }
 
+  function captureMode(value) {
+    return value === 'full-page' ? 'full-page' : 'viewport';
+  }
+
+  function devicePixelRatio(value) {
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }
+
   function checkStrokes(value) {
     if (!Array.isArray(value)) throw new Error('Strokes must be an array.');
     // Strokes are editable JSON data, not rendered pixels or executable data.
@@ -302,7 +310,11 @@
 
   function publicMetadata(metadata) {
     const { id, title, pageTitle, url, createdAt, updatedAt, imageWidth, imageHeight } = metadata;
-     return { schemaVersion: SCHEMA_VERSION, id, title, pageTitle, url, createdAt, updatedAt, imageWidth, imageHeight };
+    return {
+      schemaVersion: SCHEMA_VERSION, id, title, pageTitle, url, createdAt, updatedAt,
+      imageWidth, imageHeight, captureMode: captureMode(metadata.captureMode),
+      devicePixelRatio: devicePixelRatio(metadata.devicePixelRatio)
+    };
   }
 
   async function readPayload(metadata) {
@@ -359,7 +371,8 @@
     const annotations = checkAnnotations(input.annotations);
     const fields = {
       title: title(input.title), pageTitle: text(input.pageTitle), url: text(input.url),
-      imageWidth: checkDimension(input.imageWidth), imageHeight: checkDimension(input.imageHeight)
+      imageWidth: checkDimension(input.imageWidth), imageHeight: checkDimension(input.imageHeight),
+      captureMode: captureMode(input.captureMode), devicePixelRatio: devicePixelRatio(input.devicePixelRatio)
     };
     return locked('quota', () => locked(id, async () => {
       const screenshot = await compressScreenshot(input.screenshot);
@@ -424,13 +437,18 @@
     const indexed = await transaction(['notes'], 'readonly', (tx) => ({
       notes: tx.objectStore('notes').getAll()
     }));
-    const notes = indexed.notes
+    const indexedNotes = indexed.notes
       .filter((note) => note && note.schemaVersion === SCHEMA_VERSION)
       .map((note) => publicMetadata(note))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || left.id.localeCompare(right.id));
-    // Notes from the previous implementation remain available through the
-    // compatibility mirror until they are edited with the IndexedDB record.
-    const result = notes.length ? notes : await listNotes();
+    // Merge the IndexedDB records with the compatibility mirror. A profile can
+    // contain a mix of newer indexed records and older mirrored notes, and the
+    // popup/recent-work API must not hide either set.
+    const mirroredNotes = await listNotes();
+    const merged = new Map(mirroredNotes.map((note) => [note.id, note]));
+    for (const note of indexedNotes) merged.set(note.id, note);
+    const result = [...merged.values()].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt) || left.id.localeCompare(right.id));
     const usage = await calculateUsage();
     result.storageWarning = usage.storageWarning;
     result.bytesUsed = usage.bytesUsed;
@@ -502,7 +520,11 @@
     if (!draft) return null;
     if (draft.schemaVersion !== SCHEMA_VERSION) throw new Error('Unsupported draft schema.');
     const { title, pageTitle, url, createdAt } = draft;
-    return { schemaVersion: SCHEMA_VERSION, id, title, pageTitle, url, createdAt, ...await readPayload(draft) };
+    return {
+      schemaVersion: SCHEMA_VERSION, id, title, pageTitle, url, createdAt,
+      captureMode: captureMode(draft.captureMode), devicePixelRatio: devicePixelRatio(draft.devicePixelRatio),
+      ...await readPayload(draft)
+    };
   }
 
   async function removeDraft(draft) {
@@ -529,6 +551,7 @@
     const draft = {
       schemaVersion: SCHEMA_VERSION, id: uuid(), title: title(pageTitle), pageTitle,
       url: text(input.url), createdAt: timestamp(input.createdAt),
+      captureMode: captureMode(input.captureMode), devicePixelRatio: devicePixelRatio(input.devicePixelRatio),
       screenshotKey: uuid(), strokesKey: uuid(), annotationsKey: uuid()
     };
     return locked('drafts', async () => {
@@ -546,6 +569,7 @@
       }));
       const verified = await readDraft(draft.id);
       if (!verified || verified.title !== draft.title || verified.pageTitle !== pageTitle || verified.url !== draft.url ||
+          verified.captureMode !== draft.captureMode || verified.devicePixelRatio !== draft.devicePixelRatio ||
           verified.createdAt !== draft.createdAt || !equal(verified.strokes, []) || !equal(verified.annotations, []) ||
           !await sameBlob(verified.screenshot, screenshot)) {
         throw new Error('Draft readback did not match the write.');

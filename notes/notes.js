@@ -8,6 +8,15 @@
   let generation = 0;
   let active = true;
 
+  function notifyNotesChanged() {
+    if (typeof globalThis.chrome?.runtime?.sendMessage !== 'function') return;
+    try {
+      Promise.resolve(globalThis.chrome.runtime.sendMessage({ type: 'NOTES_CHANGED' })).catch(() => {});
+    } catch {
+      // The popup may have closed while the note operation was completing.
+    }
+  }
+
   function element(tag, className, value) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -125,8 +134,9 @@
         const updated = await globalThis.AirWriteNotes.renameNote(metadata.id, input.value);
         if (!current()) return;
         heading.textContent = updated.title;
-        form.hidden = true;
-        busy(false);
+         form.hidden = true;
+         notifyNotesChanged();
+         busy(false);
         rename.focus();
       } catch {
         if (current()) showError('Could not rename this note. Reload to check stored changes, then try again.');
@@ -143,9 +153,10 @@
         if (!current()) return;
         removed = true;
         revoke(thumbnailURL);
-        card.remove();
-        countStatus();
-        reload.focus();
+         card.remove();
+         countStatus();
+         notifyNotesChanged();
+         reload.focus();
       } catch {
         if (current()) showError('Could not delete this note. Reload to check stored changes, then try again.');
       } finally {

@@ -69,6 +69,15 @@ Reload the extension and refresh the source webpage before testing.
       on the source page. Capture with a hidden overlay keeps it hidden.
 - [ ] A capture failure or rapid tab/window switch shows an error instead of
       opening a screenshot labelled with the wrong page context.
+- [ ] **Capture Full Page** on a stable page at least three viewports tall includes
+      content below the fold, opens the existing Snapshot workspace, and restores
+      the original source scroll position.
+- [ ] Repeat full-page capture after starting midway down the source page. Verify
+      the original position is restored after success and after a forced error.
+- [ ] Check sticky headers/floating widgets and confirm the documented repeated-
+      widget limitation is visible rather than a silent gap.
+- [ ] Check horizontal overflow, changing document height, and a very tall page.
+      Each must show a clear error and restore the page and overlay.
 - [ ] The workspace Pen/Eraser, all three colours, and width slider work.
 - [ ] Undo/Redo work after strokes and Clear; Clear itself can be undone.
 - [ ] Shrink/enlarge the workspace, change zoom/DPR, and draw near image corners.
@@ -119,6 +128,9 @@ checks require a real camera and should not be marked complete from Node tests.
 
 - [ ] Opening the popup, Camera Test, or Snapshot Canvas does not request camera
       permission. No microphone permission is requested.
+- [ ] Snapshot opens in Text mode by default without requesting camera access.
+- [ ] Switching to Handwriting mode reveals a separate writing area; camera
+      permission is requested only after Start Air-writing is clicked.
 - [ ] **Camera Test → Start Camera** requests permission only after the click and
       shows the packaged local MediaPipe tracker states.
 - [ ] Camera denial, missing camera, busy camera, and tracker/model failure show
@@ -128,6 +140,10 @@ checks require a real camera and should not be marked complete from Node tests.
  - [ ] Snapshot **Start Air-writing** shows the local mirrored preview and visible
        gesture cursor. The source page and screenshot are not modified by camera
        tracking.
+- [ ] Write a limited-vocabulary word, choose Recognize, edit/select a suggestion,
+      and Accept text. Verify it opens as a normal movable/editable annotation.
+- [ ] Type a keyboard correction when recognition is uncertain, then accept it.
+- [ ] Switch back to Text mode or Stop Camera and verify all camera tracks stop.
 - [ ] Index fingertip movement moves the snapshot cursor and maps to the original
       image coordinate system, including near calibration-area edges.
  - [ ] Point with only the index finger to write at the fingertip; no pinch or

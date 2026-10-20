@@ -23,6 +23,8 @@ array is used:
   "updatedAt": "2026-10-18T12:00:00.000Z",
   "imageWidth": 1280,
   "imageHeight": 720,
+  "captureMode": "viewport",
+  "devicePixelRatio": 1,
   "screenshotKey": "generated-image-uuid",
   "strokesKey": "generated-strokes-uuid"
 }
@@ -43,6 +45,11 @@ CSS display size or screen DPR. A stroke is `{ tool: "pen" | "eraser", color:
 "#rrggbb", width: number, points: [{ x, y }] }`. Eraser strokes use
 `destination-out` on the transparent annotation canvas only. Export draws the
 original screenshot first and the finished annotation layer second.
+
+`captureMode` is `viewport` for existing and ordinary captures or `full-page` for
+the stitched capture flow. `devicePixelRatio` records the source page's reported
+display ratio for diagnostics. Older notes without these optional fields are read
+as `viewport` with a ratio of `1`.
 
 ## Compression and the hard quota
 
@@ -103,6 +110,14 @@ wins; collaborative merge/version conflict resolution is not provided.
 Capture stores its Blob directly in IndexedDB, then opens
 `snapshot/snapshot.html?draft=<id>`. Screenshot bytes never travel in the page URL
 or through runtime messages. Save changes the address to `?note=<id>`.
+
+Full-page capture uses the existing `captureVisibleTab` path one viewport at a
+time. It temporarily hides the overlay, scrolls with a tokenized content-script
+session, stitches at the actual returned scroll offsets in an extension-owned
+canvas, and restores the original page position in every completion path. The
+MVP rejects horizontal overflow, unstable document dimensions, and oversized
+images rather than silently returning a partial capture. Fixed page widgets may
+appear in more than one segment.
 
 Temporary captures are not saved notes and do not autosave annotation edits.
 Drafts older than 24 hours are cleaned when the next capture is created. Save

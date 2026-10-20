@@ -17,11 +17,18 @@
         Enable overlay
       </button>
       <button id="capture-snapshot" class="primary" type="button" disabled>Capture &amp; Annotate</button>
+      <button id="capture-full-page" class="primary" type="button" disabled>Capture Full Page</button>
       <button id="saved-notes" class="secondary" type="button">Saved Notes</button>
       <button id="camera-test" class="secondary" type="button">Camera Test</button>
       <p class="hint">Use Browse mode for the page and Draw mode for mouse or trackpad annotations.</p>
-      <p class="hint">Capture saves only the visible viewport, without the live overlay. Live drawings stay on the page; notes stay on this device.</p>
+      <p class="hint">Capture saves the visible viewport or the complete stable page, without the live overlay. Live drawings stay on the page; notes stay on this device.</p>
+      <section class="recent-work" aria-labelledby="recent-work-heading">
+        <h2 id="recent-work-heading">Recent saved work</h2>
+        <p id="recent-status" class="hint" role="status">Loading saved work…</p>
+        <ul id="recent-list" class="recent-list"></ul>
+      </section>
     </main>
+    <script src="../storage/notes.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

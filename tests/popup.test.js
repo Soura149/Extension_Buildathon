@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function popup({ unavailable = false } = {}) {
-  const nodes = Object.fromEntries(['status', 'toggle-overlay', 'capture-snapshot', 'saved-notes', 'camera-test'].map((id) => [id, {
+  const nodes = Object.fromEntries(['status', 'toggle-overlay', 'capture-snapshot', 'capture-full-page', 'saved-notes', 'camera-test'].map((id) => [id, {
     disabled: false, dataset: {}, listeners: {}, addEventListener(type, callback) { this.listeners[type] = callback; }
   }]));
   const messages = [];
@@ -36,11 +36,16 @@ test('popup capture is user-initiated, carries tab identity, and leaves notes ac
   await new Promise(setImmediate);
   assert.equal(messages.some((message) => message.type === 'CAPTURE_VISIBLE_TAB'), false);
   assert.equal(nodes['capture-snapshot'].disabled, false);
+  assert.equal(nodes['capture-full-page'].disabled, false);
   await nodes['capture-snapshot'].listeners.click();
   const message = messages.find((message) => message.type === 'CAPTURE_VISIBLE_TAB');
   assert.equal(message.tabId, 10);
   assert.equal(message.windowId, 20);
   assert.match(nodes.status.textContent, /Snapshot opened/);
+  await nodes['capture-full-page'].listeners.click();
+  const fullPageMessage = messages.find((message) => message.type === 'CAPTURE_FULL_PAGE');
+  assert.equal(fullPageMessage.tabId, 10);
+  assert.equal(fullPageMessage.windowId, 20);
   const blocked = popup({ unavailable: true });
   await new Promise(setImmediate);
   assert.equal(blocked.nodes['capture-snapshot'].disabled, true);

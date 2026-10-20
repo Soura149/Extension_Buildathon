@@ -28,6 +28,10 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
   selection event can use the same text workflow without owning annotation data.
 - HiDPI canvas sizing and redraw after viewport resize.
 - **Capture & Annotate** opens a separate Snapshot Canvas workspace.
+- **Capture Full Page** scrolls and stitches stable, vertically scrolling HTTP(S)
+  pages into the same Snapshot Canvas workspace. The original page scroll position
+  is restored on success and failure; horizontal-overflow and oversized pages fail
+  with a clear message instead of producing a partial image.
 - Snapshot pen/eraser, colours, width, undo/redo, and undoable clear reuse the
   overlay drawing engine. Image-relative coordinates stay aligned on resize.
 - **Save Note**, **Export Image PNG**, and confirmed **Discard** actions.
@@ -37,6 +41,9 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
   Landmarker: index-only writing, pinch/two-finger cursor hovering, open-palm
   erasing, bounded cursor smoothing, tracking-loss stroke termination, and
   camera stop cleanup.
+- Opt-in Snapshot Handwriting mode with a separate stroke collector, limited local
+  vocabulary adapter, editable prediction field, suggestions, retry, and keyboard
+  fallback. Text mode remains the default and never requests camera access.
 - Original screenshots and editable strokes are stored separately in IndexedDB;
   only small metadata is kept in `chrome.storage.local`.
 - Captured note images are normalized to WebP quality 0.82 (JPEG fallback) and
@@ -49,7 +56,6 @@ export an annotated PNG. No account, server, or runtime npm dependency is needed
   until the manual camera and performance checks pass.
 - Live Overlay text annotations are page-lifetime only; they are not yet included
   in saved Snapshot Canvas note payloads.
-- Full-page scrolling capture.
 - Live-overlay drawing persistence across page reloads (snapshot notes persist).
 - Cloud sync, collaboration, and annotation autosave.
 
@@ -104,8 +110,10 @@ test webpage. If the active page is restricted, the popup shows an explanation.
 ## Capture, save, and export
 
 1. Open an ordinary HTTP(S) webpage and open the AirWrite popup.
-2. Choose **Capture & Annotate**. Keep that tab active until capture finishes.
-3. A new tab displays the visible-viewport screenshot. Draw with **Pen** or
+2. Choose **Capture & Annotate** for the viewport or **Capture Full Page** for a
+   stable page without horizontal overflow. Keep that tab active until capture
+   finishes; a full-page capture may take a few seconds per segment.
+3. A new tab displays the screenshot. Draw with **Pen** or
    **Eraser**, select a colour/width, and use Undo/Redo/Clear as needed.
 4. Enter a title and choose **Save Note** to keep an editable local note.
 5. Choose **Export Image PNG** to download the screenshot plus annotations.
@@ -113,17 +121,24 @@ test webpage. If the active page is restricted, the popup shows an explanation.
 6. Open **Saved Notes** from the popup or workspace to reopen, rename, or delete.
    Saved Notes remains accessible even from a restricted webpage.
 
-## Experimental air-writing
+## Experimental air-writing and handwriting
 
 Snapshot Canvas includes a clearly labelled **Experimental Air-writing** panel.
-It requests camera permission only after **Start Air-writing** or **Start Camera**
-is clicked. The packaged MediaPipe Hand Landmarker runs locally with a CPU
+Text mode is the default. Handwriting mode requests camera permission only after
+**Start Air-writing** is clicked. The packaged MediaPipe Hand Landmarker runs locally with a CPU
 delegate; no camera frames or hand landmarks are saved or uploaded. Point with
 only the index finger to write at the fingertip, pinch or raise index and middle
 fingers to hover without committing ink, and show an open palm to erase around
 the palm/wrist center. Coordinates are smoothed and jump-limited. Losing
 tracking ends the current camera action. Mouse/touch drawing remains available
 and takes priority if it is already active.
+
+Handwriting strokes are collected in a separate writing area and never become page
+drawing strokes. **Recognize** produces a limited-vocabulary local prediction;
+the result is editable, suggestions can be selected, and keyboard text can be
+accepted when the prediction is uncertain. **Accept text** opens the normal
+editable/movable text annotation editor. Stop the camera or switch back to Text
+mode to release all camera tracks.
 
 Use **Camera Test** in the popup first to inspect permission, camera, tracker,
 and stop states without opening a note. The model, WASM runtime, checksums, and

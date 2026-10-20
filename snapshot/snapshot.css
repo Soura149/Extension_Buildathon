@@ -315,6 +315,55 @@ h1 {
 .airwriting-state[data-state="Error"], .airwriting-state[data-state="Tracking lost"] { color: #e04337; }
 .airwriting-panel > .action-error { grid-column: 1 / -1; margin: 0; }
 .airwriting-help { grid-column: 1 / -1; margin: 0; color: #778899; font-size: 12px; line-height: 1.5; }
+.annotation-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.annotation-mode button {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+.annotation-mode button[aria-pressed="true"] {
+  border-color: #87CEEB;
+  background: #87CEEB;
+  color: #2F4F4F;
+}
+.handwriting-workspace {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+  gap: 14px;
+  border: 1px solid #778899;
+  border-radius: 10px;
+  padding: 12px;
+  background: #FFFFFF;
+}
+.handwriting-pad-wrap { min-width: 0; }
+#handwriting-pad {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 150px;
+  border: 1px solid #778899;
+  border-radius: 8px;
+  background: #FAF9EE;
+  touch-action: none;
+}
+.handwriting-help,
+.handwriting-status { margin: 7px 0 0; color: #778899; font-size: 12px; line-height: 1.45; }
+.handwriting-result { display: flex; min-width: 0; flex-direction: column; justify-content: center; }
+.handwriting-result label { color: #2F4F4F; font-size: 12px; font-weight: 700; }
+#handwriting-text { width: 100%; min-height: 40px; margin-top: 6px; border: 1px solid #778899; border-radius: 7px; padding: 8px; background: #FFFFFF; color: #2F4F4F; font: inherit; }
+#handwriting-text:focus-visible { outline: 3px solid #87CEEB; outline-offset: 2px; }
+.handwriting-suggestions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.handwriting-suggestion { min-height: 28px; padding: 4px 7px; border: 1px solid #778899; border-radius: 999px; background: #FAF9EE; color: #2F4F4F; font: inherit; font-size: 11px; cursor: pointer; }
+.handwriting-suggestion:hover { border-color: #87CEEB; background: #ADDBE6; }
+.handwriting-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.handwriting-actions button { min-height: 34px; padding: 7px 9px; }
+.handwriting-actions .secondary { background: #ADDBE6; }
+.handwriting-actions .secondary:hover:not(:disabled) { background: #87CEEB; }
 .airwriting-preview-wrap {
   grid-column: 1 / -1;
   display: none;
@@ -839,6 +888,7 @@ h1 {
   }
 
   .airwriting-panel { grid-template-columns: 1fr; }
+  .handwriting-workspace { grid-template-columns: 1fr; }
   .airwriting-actions { justify-content: flex-start; }
 }
 

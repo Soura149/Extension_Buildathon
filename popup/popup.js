@@ -2,8 +2,11 @@
   const statusElement = document.querySelector('#status');
   const toggleButton = document.querySelector('#toggle-overlay');
   const captureButton = document.querySelector('#capture-snapshot');
+  const fullPageButton = document.querySelector('#capture-full-page');
   const notesButton = document.querySelector('#saved-notes');
   const cameraTestButton = document.querySelector('#camera-test');
+  const recentStatus = document.querySelector('#recent-status');
+  const recentList = document.querySelector('#recent-list');
 
   let activeTabId = null;
   let activeWindowId = null;
@@ -18,9 +21,73 @@
   function setButtonState() {
     toggleButton.disabled = activeTabId === null || busy;
     captureButton.disabled = activeTabId === null || busy;
+    if (fullPageButton) fullPageButton.disabled = activeTabId === null || busy;
     notesButton.disabled = busy;
     cameraTestButton.disabled = busy;
     toggleButton.textContent = overlayVisible ? 'Hide overlay' : 'Enable overlay';
+  }
+
+  function setRecentStatus(message, isError = false) {
+    if (!recentStatus) return;
+    recentStatus.textContent = message;
+    recentStatus.dataset.error = String(isError);
+  }
+
+  function noteLabel(note) {
+    const title = note.title || note.pageTitle || 'Untitled note';
+    const mode = note.captureMode === 'full-page' ? 'Full page' : 'Viewport';
+    return `${title} · ${mode}`;
+  }
+
+  function renderRecent(notes) {
+    if (!recentList) return;
+    recentList.replaceChildren();
+    if (!notes.length) {
+      setRecentStatus('No saved work yet. Capture a page to get started.');
+      return;
+    }
+    setRecentStatus('');
+    for (const note of notes.slice(0, 5)) {
+      const item = document.createElement('li');
+      item.className = 'recent-item';
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'recent-open';
+      open.textContent = noteLabel(note);
+      open.title = note.url || note.pageTitle || '';
+      open.addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL(`snapshot/snapshot.html?note=${encodeURIComponent(note.id)}`) })
+          .catch(() => setStatus('Saved work could not be opened.', true));
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'recent-delete';
+      remove.textContent = 'Delete';
+      remove.addEventListener('click', async () => {
+        if (!window.confirm(`Delete “${note.title || 'Untitled note'}”?`)) return;
+        remove.disabled = true;
+        try {
+          await globalThis.AirWriteNotes.deleteNote(note.id);
+          await loadRecent();
+        } catch (error) {
+          remove.disabled = false;
+          setRecentStatus(error?.message || 'Saved work could not be deleted.', true);
+        }
+      });
+      item.append(open, remove);
+      recentList.append(item);
+    }
+  }
+
+  async function loadRecent() {
+    if (!recentList || !globalThis.AirWriteNotes?.getNotes) return;
+    setRecentStatus('Loading saved work…');
+    try {
+      const notes = await globalThis.AirWriteNotes.getNotes();
+      renderRecent(Array.isArray(notes) ? notes : []);
+    } catch (error) {
+      setRecentStatus(error?.message || 'Saved work could not be loaded.', true);
+    }
   }
 
   async function sendToActiveTab(message) {
@@ -67,14 +134,14 @@
     setButtonState();
   }
 
-  captureButton.addEventListener('click', async () => {
+  async function capture(type, label) {
     if (busy || activeTabId === null) return;
     busy = true;
     setButtonState();
-    setStatus('Capturing the visible viewport…');
+    setStatus(label);
     try {
       const response = await chrome.runtime.sendMessage({
-        type: 'CAPTURE_VISIBLE_TAB', tabId: activeTabId, windowId: activeWindowId
+        type, tabId: activeTabId, windowId: activeWindowId
       });
       if (!response?.ok) throw new Error(response?.error || 'Capture could not be completed.');
       setStatus('Snapshot opened in a new tab.');
@@ -84,7 +151,10 @@
       busy = false;
       setButtonState();
     }
-  });
+  }
+
+  captureButton.addEventListener('click', () => capture('CAPTURE_VISIBLE_TAB', 'Capturing the visible viewport…'));
+  fullPageButton?.addEventListener('click', () => capture('CAPTURE_FULL_PAGE', 'Capturing the full page… Keep the webpage active…'));
   notesButton.addEventListener('click', async () => {
     try {
       await chrome.tabs.create({ url: chrome.runtime.getURL('notes/notes.html') });
@@ -100,5 +170,10 @@
     }
   });
   toggleButton.addEventListener('click', toggleOverlay);
+  chrome.runtime?.onMessage?.addListener((message) => {
+    if (message?.type === 'CAPTURE_PROGRESS' && busy) setStatus(message.message || 'Capturing…');
+    if (message?.type === 'NOTES_CHANGED') loadRecent();
+  });
   loadState();
+  loadRecent();
 })();

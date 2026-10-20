@@ -150,12 +150,12 @@
       return true;
     }
 
-    openEditor(point, annotation = null) {
+    openEditor(point, annotation = null, initialText = '') {
       if (!this.enabled || this.editor) return false;
       const source = annotation || {
         x: point.x,
         y: point.y,
-        text: '',
+        text: typeof initialText === 'string' ? initialText : '',
         color: this.defaultColor,
         fontSize: this.defaultFontSize
       };

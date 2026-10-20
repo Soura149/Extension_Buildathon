@@ -60,15 +60,36 @@
           <div class="airwriting-copy">
             <span class="experimental-badge">Experimental</span>
             <h2 id="airwriting-heading">Air-writing</h2>
-            <p>Point with only your index finger to write. Pinch or raise two fingers to hover without drawing. Show an open palm to erase around your palm and wrist. Mouse and touch remain available.</p>
+            <p>Text mode is the default and keeps normal mouse, touch, and keyboard annotations unchanged. Handwriting mode is opt-in and uses the local camera only after you start it.</p>
+          </div>
+          <div class="annotation-mode" role="group" aria-label="Annotation mode">
+            <button id="text-mode" type="button" aria-pressed="true">Text mode</button>
+            <button id="handwriting-mode" type="button" aria-pressed="false">Handwriting mode</button>
           </div>
           <div class="airwriting-actions">
-            <button id="airwriting-start" type="button">Start Air-writing</button>
+            <button id="airwriting-start" type="button" disabled>Start Air-writing</button>
             <button id="airwriting-stop" class="secondary" type="button" disabled>Stop Camera</button>
             <span id="airwriting-state" class="airwriting-state" data-state="Camera off">Camera off</span>
           </div>
           <p id="airwriting-error" class="action-error" role="alert"></p>
-          <p class="airwriting-help"><strong>Tips:</strong> keep your whole hand visible inside the preview and use steady lighting. Hover to reposition, and use the open palm to erase nearby annotations.</p>
+          <div id="handwriting-workspace" class="handwriting-workspace" hidden>
+            <div class="handwriting-pad-wrap">
+              <canvas id="handwriting-pad" width="640" height="220" aria-label="Handwriting capture area"></canvas>
+              <p class="handwriting-help">Write one word at a time. Use Clear and Retry if the local prediction is uncertain.</p>
+            </div>
+            <div class="handwriting-result">
+              <label for="handwriting-text">Recognized text</label>
+              <input id="handwriting-text" type="text" maxlength="120" autocomplete="off" placeholder="Use the keyboard if recognition is uncertain">
+              <div id="handwriting-suggestions" class="handwriting-suggestions" aria-label="Recognition suggestions"></div>
+              <div class="handwriting-actions">
+                <button id="handwriting-recognize" type="button" disabled>Recognize</button>
+                <button id="handwriting-accept" class="secondary" type="button" disabled>Accept text</button>
+                <button id="handwriting-clear" class="secondary" type="button">Clear</button>
+              </div>
+              <p id="handwriting-status" class="handwriting-status" role="status" aria-live="polite">Camera is off. You can type a correction here.</p>
+            </div>
+          </div>
+          <p class="airwriting-help"><strong>Tips:</strong> keep your whole hand visible inside the preview and use steady lighting. Handwriting strokes stay separate from page drawing and are not saved until accepted.</p>
           <div class="airwriting-preview-wrap" id="airwriting-preview">
             <div class="airwriting-preview-header" id="airwriting-drag-handle">
               <span class="preview-title">
@@ -148,6 +169,7 @@
     <script src="../storage/notes.js"></script>
     <script src="../content/canvas.js"></script>
     <script src="../content/text-annotations.js"></script>
+    <script src="../content/handwriting-recognizer.js"></script>
     <script src="../camera/hand-tracking.js"></script>
     <script src="../vendor/mediapipe/vision_bundle.js"></script>
     <script src="../camera/mediapipe-adapter.js"></script>

@@ -303,7 +303,7 @@ git diff --check
 `npm test` passed and reported:
 
 ```text
-Validated manifest and 5 JavaScript files.
+Validated manifest and 15 JavaScript files.
 ```
 
 A headless Chrome smoke check was also run using the installed Chrome binary.
@@ -340,7 +340,8 @@ The following are intentionally not implemented or not release-verified yet:
 - Physical-camera manual verification: permission outcomes, pinch quality,
   calibration/lighting, performance, and camera indicator behavior.
 - Persistence of Live Overlay drawings across source-page refreshes.
-- Full-page scrolling capture.
+- Full-page capture still needs interactive Chrome release verification for sticky
+  headers, dynamic pages, browser zoom, and capture-rate behavior.
 - Autosave of unsaved snapshot edits and collaborative note merging.
 
 Live drawing is page-local. Saved snapshot notes instead persist through local
@@ -353,13 +354,16 @@ restart persistence, and Google/YouTube checks still need manual verification.
 2. Load the repository folder through Chrome's **Load unpacked** option at
    `chrome://extensions`.
 3. Open an ordinary HTTP(S) webpage.
-4. Complete `tests/manual-checklist.md` for Live Overlay, capture/export, saved
-   notes, and the experimental camera flow.
+4. Complete `tests/manual-checklist.md` for Live Overlay, viewport/full-page
+   capture/export, saved notes, and the experimental camera/handwriting flow.
 5. Keep Phase E hand tracking separate from the content script and route camera
    input through the shared Snapshot Canvas `beginStroke`, `continueStroke`, and
    `finishStroke` behavior.
 6. Keep the Phase D storage contract documented in `storage/README.md`; preserve
    editable stroke data separately from screenshot blobs.
+7. Full-page capture uses the existing `captureVisibleTab` permission and a
+   tokenized content-script scroll session; do not add `debugger` or broad host
+   permissions without a separate permission review.
 
 Do not remove the mouse drawing path when adding webcam input; the plan
 explicitly requires mouse fallback and graceful handling when tracking is

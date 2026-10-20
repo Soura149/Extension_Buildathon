@@ -33,8 +33,18 @@
     airwritingMinimizedIcon: byId('airwriting-minimized-icon'),
     airwritingExpand: byId('airwriting-expand'),
     airwritingGestureHud: byId('airwriting-gesture-hud'),
-    airwritingSearching: byId('airwriting-searching'),
-    airwritingCursor: byId('airwriting-cursor'),
+     airwritingSearching: byId('airwriting-searching'),
+     airwritingCursor: byId('airwriting-cursor'),
+     textMode: byId('text-mode'),
+     handwritingMode: byId('handwriting-mode'),
+     handwritingWorkspace: byId('handwriting-workspace'),
+     handwritingPad: byId('handwriting-pad'),
+     handwritingText: byId('handwriting-text'),
+     handwritingSuggestions: byId('handwriting-suggestions'),
+     handwritingRecognize: byId('handwriting-recognize'),
+     handwritingAccept: byId('handwriting-accept'),
+     handwritingClear: byId('handwriting-clear'),
+     handwritingStatus: byId('handwriting-status'),
     controls: byId('drawing-controls'),
     pen: byId('tool-pen'),
     eraser: byId('tool-eraser'),
@@ -84,9 +94,15 @@
      ,lastAirPoint: null
      ,lastCameraPinching: false
      ,historyUndo: []
-     ,historyRedo: []
-     ,strokeBefore: null
-  };
+      ,historyRedo: []
+      ,strokeBefore: null
+      ,handwritingMode: false
+      ,handwritingCollector: null
+      ,handwritingRecognizer: null
+      ,handwritingLastPoint: null
+      ,handwritingActiveStroke: false
+      ,handwritingPadPointerId: null
+   };
 
   function signature(title, strokes, annotations) {
     return JSON.stringify({ title, strokes, annotations });
@@ -227,14 +243,178 @@
     ui.actionError.hidden = false;
   }
 
+  function notifyNotesChanged() {
+    if (typeof globalThis.chrome?.runtime?.sendMessage !== 'function') return;
+    try {
+      Promise.resolve(globalThis.chrome.runtime.sendMessage({ type: 'NOTES_CHANGED' })).catch(() => {});
+    } catch {
+      // The popup may have closed while the note operation was completing.
+    }
+  }
+
   function setAirwritingState(value, detail = '') {
     ui.airwritingState.textContent = value;
     ui.airwritingState.dataset.state = value;
     ui.airwritingError.textContent = value === 'Error' ? detail : '';
     ui.airwritingPanel.dataset.active = String(value !== 'Camera off');
     const active = value !== 'Camera off' && value !== 'Error';
-    ui.airwritingStart.disabled = active || !state.ready || state.operation !== null;
+    ui.airwritingStart.disabled = !state.handwritingMode || active || !state.ready || state.operation !== null;
     ui.airwritingStop.disabled = !active;
+  }
+
+  function setHandwritingStatus(message) {
+    if (ui.handwritingStatus) ui.handwritingStatus.textContent = message;
+  }
+
+  function renderHandwritingSuggestions(suggestions = []) {
+    if (!ui.handwritingSuggestions) return;
+    ui.handwritingSuggestions.replaceChildren();
+    for (const suggestion of suggestions) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'handwriting-suggestion';
+      button.textContent = suggestion;
+      button.addEventListener('click', () => {
+        ui.handwritingText.value = suggestion;
+        ui.handwritingAccept.disabled = false;
+        setHandwritingStatus('Suggestion selected. Edit it if needed, then accept it.');
+      });
+      ui.handwritingSuggestions.append(button);
+    }
+  }
+
+  function handwritingContext() {
+    return ui.handwritingPad?.getContext('2d');
+  }
+
+  function clearHandwritingPad() {
+    const context = handwritingContext();
+    if (!context || !ui.handwritingPad) return;
+    context.clearRect(0, 0, ui.handwritingPad.width, ui.handwritingPad.height);
+    context.strokeStyle = '#2F4F4F';
+    context.lineWidth = 4;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    state.handwritingLastPoint = null;
+  }
+
+  function handwritingPadPoint(point) {
+    if (!ui.handwritingPad || !point) return null;
+    const padding = 18;
+    return {
+      x: padding + Math.max(0, Math.min(1, point.x)) * (ui.handwritingPad.width - padding * 2),
+      y: padding + Math.max(0, Math.min(1, point.y)) * (ui.handwritingPad.height - padding * 2)
+    };
+  }
+
+  function drawHandwritingPoint(point, begin = false) {
+    const context = handwritingContext();
+    const current = handwritingPadPoint(point);
+    if (!context || !current) return;
+    context.strokeStyle = '#2F4F4F';
+    context.lineWidth = 4;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    if (begin || !state.handwritingLastPoint) {
+      context.beginPath();
+      context.moveTo(current.x, current.y);
+    } else {
+      context.beginPath();
+      context.moveTo(state.handwritingLastPoint.x, state.handwritingLastPoint.y);
+      context.lineTo(current.x, current.y);
+      context.stroke();
+    }
+    state.handwritingLastPoint = current;
+  }
+
+  function updateHandwritingButtons() {
+    const active = state.handwritingMode && state.camera && !['Camera off', 'Error'].includes(state.camera.state);
+    if (ui.textMode) ui.textMode.setAttribute('aria-pressed', String(!state.handwritingMode));
+    if (ui.handwritingMode) ui.handwritingMode.setAttribute('aria-pressed', String(state.handwritingMode));
+    if (ui.handwritingWorkspace) ui.handwritingWorkspace.hidden = !state.handwritingMode;
+    if (ui.airwritingStart) ui.airwritingStart.disabled = !state.handwritingMode || active || !state.ready || state.operation !== null;
+    if (ui.handwritingRecognize) ui.handwritingRecognize.disabled = !state.handwritingMode || !state.handwritingCollector?.getStrokes().length;
+  }
+
+  function setAnnotationMode(mode) {
+    const next = mode === 'handwriting';
+    if (next && state.textAnnotations?.editor) {
+      setStatus('Finish or cancel the open text annotation before switching modes.');
+      return;
+    }
+    if (!next && state.handwritingMode) stopCamera('text-mode');
+    state.handwritingMode = next;
+    if (next && !state.handwritingCollector) {
+      setHandwritingStatus('Camera is off. Start the camera, then write one word at a time.');
+    } else if (!next) {
+      setHandwritingStatus('Text mode is active. Camera access is off.');
+    }
+    updateHandwritingButtons();
+    if (next) setStatus('Handwriting mode enabled. Start the camera only when you are ready.');
+    else setStatus('Text mode enabled. Normal annotations remain available.');
+  }
+
+  async function recognizeHandwriting() {
+    if (!state.handwritingMode || !state.handwritingRecognizer || !state.handwritingCollector) return;
+    const strokes = state.handwritingCollector.getStrokes();
+    if (!strokes.length) {
+      setHandwritingStatus('Write at least one stroke before recognizing.');
+      return;
+    }
+    ui.handwritingRecognize.disabled = true;
+    setHandwritingStatus('Recognizing locally…');
+    try {
+      const result = await state.handwritingRecognizer.recognize(strokes);
+      ui.handwritingText.value = result.text || '';
+      renderHandwritingSuggestions(result.suggestions);
+      ui.handwritingAccept.disabled = !ui.handwritingText.value.trim();
+      setHandwritingStatus(result.text
+        ? `Prediction ready (${Math.round(result.confidence * 100)}% confidence). Edit it before accepting.`
+        : 'No confident prediction. Type a correction and accept it as a normal annotation.');
+    } catch (error) {
+      setHandwritingStatus(`Recognition failed. Use the keyboard fallback. ${error?.message || ''}`.trim());
+    } finally {
+      updateHandwritingButtons();
+      ui.handwritingAccept.disabled = !ui.handwritingText.value.trim();
+    }
+  }
+
+  function acceptHandwritingText() {
+    const text = ui.handwritingText?.value.trim();
+    if (!text || !state.textAnnotations || !canEdit()) return;
+    const point = imagePoint(currentAirPoint());
+    stopCamera('text-editor');
+    setTextTool(true);
+    state.textGesturePaused = true;
+    if (state.textAnnotations.openEditor(point, null, text)) {
+      ui.handwritingText.value = '';
+      ui.handwritingAccept.disabled = true;
+      setHandwritingStatus('Text opened in the normal annotation editor. Place it or correct it before saving.');
+    } else {
+      setHandwritingStatus('Close the existing text editor before accepting handwriting.');
+    }
+  }
+
+  function clearHandwriting() {
+    state.handwritingCollector?.clear();
+    clearHandwritingPad();
+    if (ui.handwritingText) ui.handwritingText.value = '';
+    renderHandwritingSuggestions();
+    if (ui.handwritingAccept) ui.handwritingAccept.disabled = true;
+    updateHandwritingButtons();
+    setHandwritingStatus('Handwriting cleared. Write one word at a time.');
+  }
+
+  function initializeHandwriting() {
+    const api = globalThis.AirWriteHandwriting;
+    if (!api?.StrokeCollector || !api.Recognizer) {
+      setHandwritingStatus('The local handwriting adapter is unavailable. Use the keyboard fallback.');
+      return;
+    }
+    state.handwritingCollector = new api.StrokeCollector();
+    state.handwritingRecognizer = new api.Recognizer();
+    clearHandwritingPad();
+    updateHandwritingButtons();
   }
 
   function setGestureHud(mode) {
@@ -437,6 +617,7 @@
       },
       onPointerMove: (point, classified) => {
         if (point) state.lastAirPoint = point;
+        if (state.handwritingMode) return true;
         if (state.textGesturePaused) return false;
         const pinching = Boolean(classified?.pinching);
         const pinchStarted = pinching && !state.lastCameraPinching;
@@ -449,6 +630,14 @@
       onModeChange: (_mode, classified) => setGestureHud(classified?.mode || 'none'),
       onStartStroke: (point) => {
         if (point) state.lastAirPoint = point;
+        if (state.handwritingMode) {
+          if (!state.handwritingCollector?.begin(point)) return false;
+          state.handwritingActiveStroke = true;
+          drawHandwritingPoint(point, true);
+          setHandwritingStatus('Stroke captured. Continue writing or choose Recognize.');
+          updateHandwritingButtons();
+          return true;
+        }
         if (!canEdit() || state.pointerId !== null || state.cameraGesture || state.textTool || state.textGesturePaused) return false;
         const mapped = imagePoint(point);
         state.cameraToolBefore = ui.canvas.dataset.tool || 'pen';
@@ -463,6 +652,11 @@
       },
       onPoint: (point) => {
         if (point) state.lastAirPoint = point;
+        if (state.handwritingMode) {
+          state.handwritingCollector?.add(point);
+          drawHandwritingPoint(point);
+          return;
+        }
         if (state.textTool || state.textGesturePaused) return;
         if (state.cameraGesture !== 'draw' || !canEdit()) return;
         const mapped = imagePoint(point);
@@ -471,6 +665,7 @@
       },
       onErase: (point, details = {}) => {
         if (point) state.lastAirPoint = point;
+        if (state.handwritingMode) return;
         if (state.textTool || state.textGesturePaused) return;
         if (!canEdit() || state.pointerId !== null) return;
         if (!state.cameraGesture) {
@@ -495,7 +690,19 @@
         state.cameraStrokePoints += 1;
         refreshContent();
       },
-      onEndStroke: ({ reason }) => endCameraStroke(reason, false)
+      onEndStroke: ({ reason, gesture }) => {
+        if (state.handwritingMode && gesture === 'draw') {
+          state.handwritingCollector?.end();
+          state.handwritingActiveStroke = false;
+          state.handwritingLastPoint = null;
+          updateHandwritingButtons();
+          setHandwritingStatus(reason === 'tracking-lost'
+            ? 'Tracking stopped the stroke. Recognize it or retry.'
+            : 'Stroke finished. Add more strokes or choose Recognize.');
+          return;
+        }
+        endCameraStroke(reason, false);
+      }
     });
     setAirwritingState(state.camera.state);
     setGestureHud('none');
@@ -732,6 +939,51 @@
   ui.undo.addEventListener('click', () => changeHistory('undo'));
   ui.redo.addEventListener('click', () => changeHistory('redo'));
   ui.clear.addEventListener('click', () => changeHistory('clear'));
+  ui.textMode?.addEventListener('click', () => setAnnotationMode('text'));
+  ui.handwritingMode?.addEventListener('click', () => setAnnotationMode('handwriting'));
+  ui.handwritingRecognize?.addEventListener('click', recognizeHandwriting);
+  ui.handwritingAccept?.addEventListener('click', acceptHandwritingText);
+  ui.handwritingClear?.addEventListener('click', clearHandwriting);
+  ui.handwritingText?.addEventListener('input', () => {
+    ui.handwritingAccept.disabled = !ui.handwritingText.value.trim();
+  });
+  ui.handwritingPad?.addEventListener('pointerdown', (event) => {
+    if (!state.handwritingMode || !canEdit() || state.handwritingPadPointerId !== null) return;
+    const rect = ui.handwritingPad.getBoundingClientRect();
+    const point = {
+      x: (event.clientX - rect.left) / (rect.width || ui.handwritingPad.width),
+      y: (event.clientY - rect.top) / (rect.height || ui.handwritingPad.height)
+    };
+    state.handwritingPadPointerId = event.pointerId;
+    ui.handwritingPad.setPointerCapture?.(event.pointerId);
+    state.handwritingCollector?.begin(point);
+    state.handwritingActiveStroke = true;
+    drawHandwritingPoint(point, true);
+    updateHandwritingButtons();
+    event.preventDefault();
+  });
+  ui.handwritingPad?.addEventListener('pointermove', (event) => {
+    if (event.pointerId !== state.handwritingPadPointerId) return;
+    const rect = ui.handwritingPad.getBoundingClientRect();
+    const point = {
+      x: (event.clientX - rect.left) / (rect.width || ui.handwritingPad.width),
+      y: (event.clientY - rect.top) / (rect.height || ui.handwritingPad.height)
+    };
+    state.handwritingCollector?.add(point);
+    drawHandwritingPoint(point);
+    event.preventDefault();
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    ui.handwritingPad?.addEventListener(type, (event) => {
+      if (event.pointerId !== state.handwritingPadPointerId) return;
+      state.handwritingCollector?.end();
+      state.handwritingPadPointerId = null;
+      state.handwritingActiveStroke = false;
+      state.handwritingLastPoint = null;
+      updateHandwritingButtons();
+      setHandwritingStatus('Stroke finished. Add more strokes or choose Recognize.');
+    });
+  }
   ui.title.addEventListener('input', () => {
     if (canEdit()) {
       refreshContent();
@@ -754,6 +1006,8 @@
       title: ui.title.value,
       pageTitle: state.record.pageTitle,
       url: state.record.url,
+      captureMode: state.record.captureMode,
+      devicePixelRatio: state.record.devicePixelRatio,
       createdAt: state.record.createdAt,
       screenshot: state.record.screenshot,
       strokes,
@@ -808,6 +1062,7 @@
     }
     state.operation = null;
     refreshContent();
+    notifyNotesChanged();
     setStatus(hasUnsavedChanges()
       ? 'Note saved. You have newer unsaved changes.'
       : 'Note saved locally. You can keep editing or find it in Saved Notes.');
@@ -1042,6 +1297,8 @@
           : (typeof record.pageTitle === 'string' && record.pageTitle ? record.pageTitle : 'Untitled note'),
         pageTitle: typeof record.pageTitle === 'string' ? record.pageTitle : '',
         url: typeof record.url === 'string' ? record.url : '',
+        captureMode: record.captureMode === 'full-page' ? 'full-page' : 'viewport',
+        devicePixelRatio: Number.isFinite(record.devicePixelRatio) ? record.devicePixelRatio : 1,
         createdAt: record.createdAt ?? new Date().toISOString(),
         screenshot: record.screenshot
       };
@@ -1091,14 +1348,15 @@
       ui.canvas.dataset.tool = 'pen';
       state.currentSignature = signature(ui.title.value, state.engine.getStrokes(), annotationSnapshot());
       state.savedSignature = state.noteId === null ? null : state.currentSignature;
-      state.ready = true;
-      initializeAirwriting();
+       state.ready = true;
+       initializeHandwriting();
+       initializeAirwriting();
       ui.loading.hidden = true;
       ui.workspace.setAttribute('aria-busy', 'false');
       refreshControls();
-      setStatus(state.noteId === null
-        ? 'Capture ready. Save Note to keep this screenshot, even if you add no annotations.'
-        : 'Saved note opened. Your annotations are editable.');
+       setStatus(state.noteId === null
+         ? `${state.record.captureMode === 'full-page' ? 'Full-page capture' : 'Capture'} ready. Save Note to keep this screenshot, even if you add no annotations.`
+         : 'Saved note opened. Your annotations are editable.');
     } catch (error) {
       showLoadError('This snapshot could not be opened', `The local screenshot or annotations could not be read. Retry loading, or capture the webpage again.${errorDetail(error)}`);
     }
