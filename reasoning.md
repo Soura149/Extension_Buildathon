@@ -1,10 +1,10 @@
-# AirWrite — Architecture & Technical Decisions Case Study
+# Overlayed — Architecture & Technical Decisions Case Study
 
-> **Historical decision record.** Current architecture ownership, script loading,
+> **Architecture & Decision Record.** Current architecture ownership, script loading,
 > capture contracts, and storage authority are documented in
 > [`docs/architecture.md`](docs/architecture.md) and [`docs/storage.md`](docs/storage.md).
 
-This document captures the core architectural decisions, trade-offs, and technical case studies behind **AirWrite**. It documents **what** choices were made, **why** they were chosen over their alternatives, and **why vice versa**.
+This document captures the core architectural decisions, trade-offs, and technical case studies behind **Overlayed** (developed as *AirWrite* during initial prototyping). It documents **what** choices were made, **why** they were chosen over their alternatives, and **why vice versa**.
 
 ---
 
@@ -121,3 +121,31 @@ Controlling how the transparent canvas interacts with user clicks and gestures.
 2. **21 Landmark Coordinates:** Provides accurate 3D hand landmarks out of the box, allowing simple heuristic gesture detection (e.g., pinch between thumb and index finger tip).
 3. **Local Privacy:** Camera frames are processed entirely on-device; no video feed leaves the user's browser.
 4. **Avoids Heavy Overhead:** Avoids shipping large custom ML weights or complex server inference pipelines for an in-browser annotation extension.
+
+---
+
+## 8. Scroll-and-Stitch vs. `chrome.debugger` (Chrome DevTools Protocol)
+
+### What is the choice?
+Capturing a full webpage by progressively scrolling and stitching viewport frames in an `OffscreenCanvas` versus attaching the Chrome DevTools Protocol (`Page.captureScreenshot` via the `debugger` API).
+
+### Why Scroll-and-Stitch:
+1. **User Trust & Zero Alarming Banners:** Attaching `chrome.debugger` triggers a persistent, high-visibility browser security warning across the user's screen (*"Overlayed started debugging this browser"*). Scroll-and-stitch runs seamlessly without alarming the user.
+2. **Minimal Permissions:** Scroll-and-stitch only requires standard `activeTab` permission. The `debugger` permission requires broad administrative rights over the browser, which raises red flags during security reviews and hackathon evaluations.
+3. **Deterministic Canvas Output:** Using `OffscreenCanvas` in the background worker allows precise coordinate scaling with `devicePixelRatio` normalization.
+
+### Why vice versa (Trade-offs):
+* Scroll-and-stitch requires active document scrolling and paint settling between segments. Sticky headers can repeat between segments on dynamic pages, which is handled via offset calculation.
+
+---
+
+## 9. Human-in-the-Loop Gesture Quick-Tags vs. Heavy Cloud OCR
+
+### What is the choice?
+A client-side stroke collector and limited vocabulary suggestion pipeline with instant editable text preview versus an external OCR API or 40MB neural net.
+
+### Why Human-in-the-Loop Quick-Tags:
+1. **Zero Tactile Resistance in Air-Writing:** Freehand writing in mid-air with a webcam lacks tactile feedback, making full sentence handwriting error-prone regardless of model size.
+2. **Real Presentation Workflows:** In meetings and lectures, users primarily write quick tags (`NOTE`, `TODO`, `DONE`, `YES`, `NO`) rather than long essays.
+3. **Instant Editable Fallback:** Predictions are rendered into an editable input with one-click suggestion chips and keyboard fallback before committing to the canvas, preventing messy AI hallucinations.
+4. **Complete Local Privacy:** No stroke data, text transcripts, or video frames are sent off-device.

@@ -83,7 +83,9 @@ ordinary storage errors.
 
 ## Write and failure behavior
 
-`storage/notes.js` exposes asynchronous methods on `globalThis.AirWriteNotes`:
+`storage/notes.js` exposes the Overlayed notes API through the historical
+`globalThis.AirWriteNotes` compatibility global. New UI code should treat this
+as the Overlayed storage service and must not create a second repository:
 `createDraft`, `getDraft`, `deleteDraft`, `saveNote`, `getNote`, `listNotes`,
 `renameNote`, and `deleteNote`, plus the Phase D names `getNotes`,
 `getNoteById`, and `getStorageUsage`. Missing notes/drafts return `null`. Errors reject

@@ -35,7 +35,9 @@ and annotations. Payloads are also stored in their dedicated stores:
 - `drafts`: temporary capture metadata and payload references.
 
 The `chrome.storage.local` key `airwrite.note.v1.<id>` is a small metadata mirror.
-It is not a screenshot store and is not the only source used by `getNotes()`.
+The historical key prefix is retained so existing locally saved notes continue
+to load after the product rename to Overlayed. It is not a screenshot store and
+is not the only source used by `getNotes()`.
 
 ## API boundary
 

@@ -1,4 +1,4 @@
-# AirWrite manual checklist
+# Overlayed manual checklist
 
 Load the repository folder as an unpacked extension from `chrome://extensions`.
 Use an ordinary HTTP(S) page for the main checks; browser-internal pages do not
@@ -7,7 +7,7 @@ allow content-script injection.
 ## Phase 0 and Phase 1
 
 - [ ] The extension loads without a manifest error.
-- [ ] Clicking the AirWrite icon opens the popup.
+- [ ] Clicking the Overlayed icon opens the popup.
 - [ ] **Enable overlay** shows a toolbar and transparent drawing surface.
 - [ ] Drawing with a mouse or trackpad creates a smooth visible stroke.
 - [ ] **Eraser** removes pixels from an existing stroke.
@@ -46,7 +46,7 @@ allow content-script injection.
       a fixed header.
 - [ ] Resizing the viewport keeps existing strokes aligned.
 - [ ] Refreshing the page resets the page-local drawing, as documented.
-- [ ] The popup reports that AirWrite is unavailable on a restricted page.
+- [ ] The popup reports that Overlayed is unavailable on a restricted page.
 
 ## Phase A browser coverage
 

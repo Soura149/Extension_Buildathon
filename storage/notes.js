@@ -229,7 +229,7 @@
         };
         request.onblocked = () => {
           rejected = true;
-          reject(new Error('IndexedDB upgrade is blocked. Close other AirWrite pages.'));
+            reject(new Error('IndexedDB upgrade is blocked. Close other Overlayed pages.'));
         };
         request.onsuccess = () => {
           const database = request.result;

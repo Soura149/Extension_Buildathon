@@ -22,7 +22,7 @@ importScripts('storage/notes.js');
   async function selectedTab(message) {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || tab.id !== message.tabId || tab.windowId !== message.windowId || !supported(tab.url)) {
-      throw new Error('The selected webpage changed or is restricted. Open AirWrite on an ordinary HTTP(S) page and try again.');
+      throw new Error('The selected webpage changed or is restricted. Open Overlayed on an ordinary HTTP(S) page and try again.');
     }
     return tab;
   }
@@ -225,7 +225,7 @@ importScripts('storage/notes.js');
       // Fail rather than accidentally flattening the live toolbar/drawing. Tabs
       // opened before an extension reload must refresh their content script.
       const response = await chrome.tabs.sendMessage(tab.id, { type: 'PREPARE_SNAPSHOT', token }, options);
-      if (!response?.ok) throw new Error('Refresh this webpage to connect AirWrite, then try capturing again.');
+      if (!response?.ok) throw new Error('Refresh this webpage to connect Overlayed, then try capturing again.');
       prepared = true;
       // Give Chrome a paint after hiding the overlay, before reading the pixels.
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -268,7 +268,7 @@ importScripts('storage/notes.js');
     try {
       const tab = await selectedTab(message);
       const response = await chrome.tabs.sendMessage(tab.id, { type: 'PREPARE_FULL_PAGE', token }, options);
-      if (!response?.ok) throw new Error(response?.error || 'Refresh this webpage to connect AirWrite, then try capturing again.');
+      if (!response?.ok) throw new Error(response?.error || 'Refresh this webpage to connect Overlayed, then try capturing again.');
       prepared = true;
       const result = await stitchFullPage(message, tab, token, response);
       draftId = await AirWriteNotes.createDraft({
@@ -298,13 +298,13 @@ importScripts('storage/notes.js');
     // Content scripts and unrelated extension pages cannot initiate a capture.
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup/popup.html') ||
         sender.tab || !Number.isInteger(message.tabId) || !Number.isInteger(message.windowId)) {
-      sendResponse({ ok: false, error: 'Capture must be started from the AirWrite popup.' });
+      sendResponse({ ok: false, error: 'Capture must be started from the Overlayed popup.' });
       return false;
     }
     const operation = message.type === 'CAPTURE_FULL_PAGE' ? captureFullPage : capture;
     operation(message).then(sendResponse, (error) => sendResponse({
       ok: false,
-      error: error?.message || 'Capture failed. Keep the webpage active, refresh it after reloading AirWrite, and try again. Chrome may restrict capture or local storage may be full.'
+      error: error?.message || 'Capture failed. Keep the webpage active, refresh it after reloading Overlayed, and try again. Chrome may restrict capture or local storage may be full.'
     }));
     return true;
   });

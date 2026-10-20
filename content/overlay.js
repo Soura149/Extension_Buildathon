@@ -87,7 +87,7 @@
 
       this.canvasElement = document.createElement('canvas');
       this.canvasElement.className = 'airwrite-canvas';
-      this.canvasElement.setAttribute('aria-label', 'AirWrite drawing surface');
+       this.canvasElement.setAttribute('aria-label', 'Overlayed drawing surface');
       this.shadowRoot.append(this.canvasElement);
       this.canvas = new window.AirWriteCanvas(this.canvasElement, { history: false });
       this.canvas.setColor(this.color);

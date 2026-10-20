@@ -32,6 +32,11 @@ is demonstrated.
 - Shared code must not assume a DOM, camera, or extension API unless its consumer
   supplies that environment. Pure helpers are exposed through namespaced globals
   for the current classic-script package.
+- Some internal classic-script globals, CSS selectors, IndexedDB names, and
+  metadata keys retain the historical `AirWrite`/`airwrite` prefix for backward
+  compatibility with existing tests and locally saved data. They are not product
+  names or user-facing labels; all active UI and documentation identify the
+  product as **Overlayed**.
 
 ## Ownership boundaries
 

@@ -132,10 +132,10 @@
           sendResponse({ ok: true });
           break;
         default:
-          sendResponse({ ok: false, error: 'Unknown AirWrite message.' });
+          sendResponse({ ok: false, error: 'Unknown Overlayed message.' });
       }
     } catch (error) {
-      sendResponse({ ok: false, error: 'AirWrite could not update the overlay.' });
+      sendResponse({ ok: false, error: 'Overlayed could not update the overlay.' });
     }
     return false;
   });

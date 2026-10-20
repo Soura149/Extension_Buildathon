@@ -1235,7 +1235,10 @@
 
   window.addEventListener('beforeunload', (event) => {
     stopCamera('page-unload');
-    if (!state.allowLeave && (hasUnsavedChanges() || state.operation !== null)) {
+    const hadGesture = typeof navigator?.userActivation?.hasBeenActive === 'boolean'
+      ? navigator.userActivation.hasBeenActive
+      : true;
+    if (hadGesture && !state.allowLeave && (hasUnsavedChanges() || state.operation !== null)) {
       event.preventDefault();
       event.returnValue = '';
     }

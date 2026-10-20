@@ -1,6 +1,6 @@
 # Vendored MediaPipe Hand Landmarker
 
-AirWrite packages the following local assets from `@mediapipe/tasks-vision`
+Overlayed packages the following local assets from `@mediapipe/tasks-vision`
 1.1.1 under its Apache-2.0 license:
 
 - `vision_bundle.js` — browser bundle.
@@ -11,7 +11,7 @@ The extension loads these files only from `chrome-extension://` URLs. No CDN,
 Google Storage model fetch, or runtime npm install is used by the camera page.
 `camera/mediapipe-adapter.js` selects the CPU delegate and one-hand VIDEO mode.
 Camera frames are processed locally; frames and landmarks are not persisted or
-sent to AirWrite's service worker, webpage, or a server.
+sent to Overlayed's service worker, webpage, or a server.
 
 The JavaScript/WASM package is Apache-2.0. The model is distributed under the
 MediaPipe model terms supplied by Google; review the upstream model/package

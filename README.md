@@ -226,7 +226,7 @@ silently hidden or changed in the source page.
 sequenceDiagram
   participant User
   participant Snapshot
-  participant DB as AirWriteNotes
+  participant DB as Notes storage API
   participant Notes as Saved Notes
 
   Snapshot->>DB: getDraft(id) or getNote(id)
@@ -251,7 +251,7 @@ sequenceDiagram
 sequenceDiagram
   participant User
   participant Popup
-  participant DB as AirWriteNotes
+  participant DB as Notes storage API
   participant Snapshot
 
   User->>Popup: Open popup
@@ -771,6 +771,9 @@ and [`vendor/mediapipe/SHA256SUMS.txt`](vendor/mediapipe/SHA256SUMS.txt).
   with reproducibility requirements.
 - Keep secrets out of committed files; use `.env.example` only for redacted
   configuration shape.
+- The product name is **Overlayed**. Historical `AirWrite`/`airwrite` prefixes
+  remain only in compatibility globals, CSS selectors, storage keys, and archived
+  planning records; do not introduce them into new user-facing text.
 - Run `npm test` after every implementation change.
 - Preserve the protected gesture badge values and annotation test contracts in
   `tests/snapshot-ux.test.js` when changing styles.

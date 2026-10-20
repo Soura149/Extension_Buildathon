@@ -90,7 +90,7 @@ async function main() {
     response.setHeader('Content-Type', 'text/html');
     // Strict Trusted Types verifies the injected UI avoids HTML sinks.
     response.setHeader('Content-Security-Policy', "require-trusted-types-for 'script'");
-    response.end('<!doctype html><title>AirWrite local fixture</title><style>body{height:3000px}</style><h1>Capture fixture</h1><a id="link" href="#destination">Browse link</a><p id="destination">Selectable page text</p>');
+    response.end('<!doctype html><title>Overlayed local fixture</title><style>body{height:3000px}</style><h1>Capture fixture</h1><a id="link" href="#destination">Browse link</a><p id="destination">Selectable page text</p>');
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
