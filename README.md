@@ -506,11 +506,67 @@ source webpage so its content script is replaced too.
 
 ```sh
 npm ci
+npm run build
 npm test
 ```
 
-The project has no application server to start. Chrome is the runtime for the
-extension; Node runs the offline validation and unit suite.
+The project has no application server to start. `npm run build` validates the
+loadable extension package; `npm test` runs the single canonical test command.
+Chrome is the runtime for the extension; Node runs the offline validation and
+unit suite.
+
+### Environment configuration
+
+Overlayed has no backend or required secrets. Copy `.env.example` only when a
+local environment file is useful for future build-time settings; never commit
+`.env` or put credentials in source files.
+
+## Exact build, test, and run commands
+
+From the repository root:
+
+### Build/validate
+
+```sh
+npm ci
+npm run build
+```
+
+### Test
+
+```sh
+npm test
+```
+
+### Run the extension on Linux
+
+Chrome/Chromium is the extension runtime. With a Chromium executable installed,
+run one of these commands from the repository root:
+
+```sh
+google-chrome --load-extension="$PWD"
+```
+
+or:
+
+```sh
+chromium --load-extension="$PWD"
+```
+
+If the browser is installed elsewhere, set `CHROME_PATH` to that executable and
+use the manual **Load unpacked** workflow described below. The extension itself
+does not start an HTTP server.
+
+### Build and run the offline Docker check
+
+```sh
+docker build -t overlayed:local .
+docker run --rm overlayed:local
+```
+
+The Docker image builds the validated extension workspace and runs `npm test`.
+It verifies the local package on Linux; it does not launch a graphical Chrome
+extension UI inside the container.
 
 ## How to use
 
@@ -606,7 +662,7 @@ CHROME_PATH=/path/to/chrome npm run test:browser
 PowerShell:
 
 ```powershell
-$env:CHROME_PATH = 'C:\Path\To\chrome.exe'
+$env:CHROME_PATH = (Get-Command chrome.exe).Source
 npm run test:browser
 ```
 

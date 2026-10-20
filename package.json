@@ -4,10 +4,11 @@
   "private": true,
   "description": "Overlayed Chrome extension",
   "scripts": {
+    "build": "node scripts/validate-project.js",
     "test": "node scripts/validate-project.js && node --test tests/*.test.js",
     "test:browser": "node scripts/browser-smoke.js"
   },
   "engines": {
-    "node": ">=24.11.0"
+    "node": "24.11.0"
   }
 }
