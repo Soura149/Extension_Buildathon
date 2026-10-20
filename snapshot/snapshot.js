@@ -259,7 +259,7 @@
     ui.airwritingError.textContent = value === 'Error' ? detail : '';
     ui.airwritingPanel.dataset.active = String(value !== 'Camera off');
     const active = value !== 'Camera off' && value !== 'Error';
-    ui.airwritingStart.disabled = !state.handwritingMode || active || !state.ready || state.operation !== null;
+    ui.airwritingStart.disabled = active || !state.ready || state.operation !== null;
     ui.airwritingStop.disabled = !active;
   }
 
@@ -329,11 +329,11 @@
   }
 
   function updateHandwritingButtons() {
-    const active = state.handwritingMode && state.camera && !['Camera off', 'Error'].includes(state.camera.state);
+    const active = state.camera && !['Camera off', 'Error'].includes(state.camera.state);
     if (ui.textMode) ui.textMode.setAttribute('aria-pressed', String(!state.handwritingMode));
     if (ui.handwritingMode) ui.handwritingMode.setAttribute('aria-pressed', String(state.handwritingMode));
     if (ui.handwritingWorkspace) ui.handwritingWorkspace.hidden = !state.handwritingMode;
-    if (ui.airwritingStart) ui.airwritingStart.disabled = !state.handwritingMode || active || !state.ready || state.operation !== null;
+    if (ui.airwritingStart) ui.airwritingStart.disabled = active || !state.ready || state.operation !== null;
     if (ui.handwritingRecognize) ui.handwritingRecognize.disabled = !state.handwritingMode || !state.handwritingCollector?.getStrokes().length;
   }
 
@@ -348,7 +348,7 @@
     if (next && !state.handwritingCollector) {
       setHandwritingStatus('Camera is off. Start the camera, then write one word at a time.');
     } else if (!next) {
-      setHandwritingStatus('Text mode is active. Camera access is off.');
+      setHandwritingStatus('Text mode is active. Start Air-writing for gesture drawing, hover, or erase.');
     }
     updateHandwritingButtons();
     if (next) setStatus('Handwriting mode enabled. Start the camera only when you are ready.');

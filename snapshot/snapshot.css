@@ -110,15 +110,13 @@ button.discard {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: 12px;
-  background: #87CEEB;
-  color: #2F4F4F;
-  font-size: 25px;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 2px 8px rgba(47, 79, 79, 0.12);
 }
 
 .brand-name {
