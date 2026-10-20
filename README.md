@@ -79,27 +79,31 @@ layer. The background service worker coordinates privileged capture operations;
 the content script owns the live page overlay; extension pages own their own UI
 state; IndexedDB owns screenshot and annotation payloads.
 
+For the context inventory, message contracts, storage authority, and packaging
+decision, see [`docs/architecture.md`](docs/architecture.md). The persistence
+contract is also maintained separately in [`docs/storage.md`](docs/storage.md).
+
 ```mermaid
 flowchart TB
   subgraph Browser[Chrome browser]
-    Page[HTTP(S) webpage]
-    CS[Content script\nLive Overlay + capture session]
-    Popup[Popup\ncontrols + recent saved work]
-    Worker[MV3 service worker\ncapture coordinator]
-    Snapshot[Snapshot Canvas\nedit / save / export]
-    Notes[Saved Notes\nlist / rename / delete]
-    Camera[Camera Test / local tracker]
+    Page["HTTP(S) webpage"]
+    CS["Content script<br/>Live Overlay + capture session"]
+    Popup["Popup<br/>controls + recent saved work"]
+    Worker["MV3 service worker<br/>capture coordinator"]
+    Snapshot["Snapshot Canvas<br/>edit / save / export"]
+    Notes["Saved Notes<br/>list / rename / delete"]
+    Camera["Camera Test / local tracker"]
   end
 
   subgraph Local[Extension-local data]
-    IDB[(IndexedDB\nscreenshots, strokes, annotations, drafts)]
-    Meta[(chrome.storage.local\nsmall metadata mirrors)]
-    Session[(chrome.storage.session\ncapture progress, when available)]
+    IDB[("IndexedDB<br/>screenshots, strokes, annotations, drafts")]
+    Meta[("chrome.storage.local<br/>small metadata mirrors")]
+    Session[("chrome.storage.session<br/>capture progress, when available")]
   end
 
   subgraph Assets[Bundled local assets]
-    MediaPipe[MediaPipe hand landmarker + WASM]
-    Handwriting[Handwriting collector + recognizer adapter]
+    MediaPipe["MediaPipe hand landmarker + WASM"]
+    Handwriting["Handwriting collector + recognizer adapter"]
   end
 
   Page <--> CS
@@ -236,7 +240,7 @@ sequenceDiagram
   Snapshot->>DB: Delete temporary draft after successful URL update
   User->>Snapshot: Export Image PNG
   Snapshot->>Snapshot: Flatten original screenshot + annotation layers
-  Snapshot-->>User: Download PNG; editable note remains intact
+  Snapshot-->>User: Download PNG, editable note remains intact
   User->>Notes: Open saved note later
   Notes->>Snapshot: snapshot.html?note=id
 ```
@@ -426,6 +430,10 @@ Overlayed/
 ├── scripts/
 │   ├── validate-project.js        # Manifest, resources, checksums, JS syntax
 │   └── browser-smoke.js           # Optional disposable Chrome smoke test
+├── docs/
+│   ├── architecture.md             # Runtime contexts and message contracts
+│   ├── storage.md                   # Persistence API and authority rules
+│   └── decisions/                   # Accepted architecture decisions
 ├── palette.md                     # Authoritative Color Palette #64 tokens
 ├── Dockerfile                     # Reproducible offline test image
 ├── Makefile                       # make test -> npm test
