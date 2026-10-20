@@ -1,5 +1,9 @@
 # AirWrite — Staged Implementation Plan
 
+> **Historical planning document.** The current product name is Overlayed and
+> the authoritative implementation references are [`README.md`](README.md),
+> [`docs/architecture.md`](docs/architecture.md), and [`docs/storage.md`](docs/storage.md).
+
 > **Working concept:** A Chrome extension that lets users annotate webpages using a floating canvas, then adds webcam-based air-writing and contextual note-saving.
 >
 > **Build principle:** Ship a useful, working extension at every phase. Keep the stack small and avoid building a backend until the core experience works.

@@ -1,5 +1,10 @@
    # AirWrite — Updated Implementation Roadmap
 
+> **Historical roadmap.** The current runtime architecture and verification
+> status are maintained in [`README.md`](README.md) and
+> [`docs/architecture.md`](docs/architecture.md). This file is retained for
+> implementation history and is not the active source of truth.
+
 > **Purpose:** Active plan for the existing AirWrite repository. It reflects completed work and gives the next tasks in order.
 >
 > **Product direction:** AirWrite has two annotation modes:

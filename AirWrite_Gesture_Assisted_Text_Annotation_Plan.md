@@ -1,5 +1,9 @@
 # AirWrite — Gesture-Assisted Text Annotation Implementation Plan
 
+> **Historical planning document.** Refer to [`README.md`](README.md) and
+> [`docs/architecture.md`](docs/architecture.md) for the current Overlayed
+> runtime boundaries and supported annotation workflows.
+
 **Goal:** Replace unreliable freehand air-handwriting with a simpler workflow: hand tracking points to a location; the keyboard supplies the text; AirWrite places an editable annotation over the webpage.
 
 **Implementation rule:** Extend the existing Chrome Manifest V3 extension. Reuse its overlay, Shadow DOM, canvas, toolbar, pen/eraser, and undo/redo. Do not rebuild from scratch.

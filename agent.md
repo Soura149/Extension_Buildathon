@@ -1,5 +1,9 @@
 # AirWrite Agent Work Log
 
+> **Historical work log.** This file preserves earlier implementation context.
+> The current Overlayed architecture and verification evidence are maintained in
+> [`README.md`](README.md) and [`docs/architecture.md`](docs/architecture.md).
+
 This document records the work completed in this workspace while implementing
 the AirWrite implementation plan. It is intended to let another agent or
 developer resume the project without reconstructing the earlier decisions.

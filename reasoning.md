@@ -1,5 +1,9 @@
 # AirWrite — Architecture & Technical Decisions Case Study
 
+> **Historical decision record.** Current architecture ownership, script loading,
+> capture contracts, and storage authority are documented in
+> [`docs/architecture.md`](docs/architecture.md) and [`docs/storage.md`](docs/storage.md).
+
 This document captures the core architectural decisions, trade-offs, and technical case studies behind **AirWrite**. It documents **what** choices were made, **why** they were chosen over their alternatives, and **why vice versa**.
 
 ---

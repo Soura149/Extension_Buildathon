@@ -35,6 +35,9 @@ const requiredFiles = [
   '.nvmrc',
   'package-lock.json',
   'README.md',
+  'docs/architecture.md',
+  'docs/storage.md',
+  'docs/decisions/0001-retain-feature-folders.md',
   'Dockerfile',
   'Makefile'
 ];
@@ -54,11 +57,54 @@ for (const line of fs.readFileSync(checksumFile, 'utf8').trim().split(/\r?\n/)) 
 }
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+
+function validateManifestPath(relativePath, label) {
+  if (typeof relativePath !== 'string' || !relativePath || /^(?:[a-z]+:)?\/\//i.test(relativePath) || path.isAbsolute(relativePath)) {
+    throw new Error(`Manifest ${label} must be a local relative path: ${relativePath}`);
+  }
+  const filePath = path.resolve(root, relativePath);
+  if (!filePath.startsWith(root + path.sep) || !fs.existsSync(filePath)) {
+    throw new Error(`Manifest ${label} points to a missing file: ${relativePath}`);
+  }
+  return filePath;
+}
+
+function checkPngDimensions(filePath, relativePath) {
+  const bytes = fs.readFileSync(filePath);
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (bytes.length < 24 || !bytes.subarray(0, 8).equals(signature) || bytes.toString('ascii', 12, 16) !== 'IHDR') {
+    throw new Error(`Icon is not a valid PNG: ${relativePath}`);
+  }
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  if (!width || !height || width !== height) {
+    throw new Error(`Icon must be a non-empty square PNG: ${relativePath}`);
+  }
+  return { width, height };
+}
+
 if (manifest.manifest_version !== 3) {
   throw new Error('manifest.json must use Manifest V3');
 }
 if (manifest.action?.default_popup !== 'popup/popup.html') {
   throw new Error('manifest.json must point to popup/popup.html');
+}
+validateManifestPath(manifest.background?.service_worker, 'background.service_worker');
+validateManifestPath(manifest.action?.default_popup, 'action.default_popup');
+for (const [size, iconPath] of Object.entries(manifest.icons || {})) {
+  const filePath = validateManifestPath(iconPath, `icons[${size}]`);
+  const dimensions = checkPngDimensions(filePath, iconPath);
+  if (String(dimensions.width) !== String(size)) {
+    throw new Error(`Icon ${iconPath} is ${dimensions.width}px but manifest declares ${size}px.`);
+  }
+}
+for (const [index, script] of (manifest.content_scripts || []).entries()) {
+  for (const file of [...(script.js || []), ...(script.css || [])]) {
+    validateManifestPath(file, `content_scripts[${index}] resource`);
+  }
+}
+for (const [index, group] of (manifest.web_accessible_resources || []).entries()) {
+  for (const file of group.resources || []) validateManifestPath(file, `web_accessible_resources[${index}] resource`);
 }
 if (!manifest.content_scripts?.some((script) => script.js?.includes('content/content.js'))) {
   throw new Error('manifest.json must register content/content.js');
