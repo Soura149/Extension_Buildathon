@@ -1,6 +1,6 @@
-# AirWrite
+# Overlayed
 
-AirWrite is a local-only Manifest V3 Chrome extension with two annotation modes:
+Overlayed is a local-only Manifest V3 Chrome extension with two annotation modes:
 draw over a live webpage, or capture its visible viewport and annotate a stable
 image in a separate workspace. Save editable snapshot notes on this device or
 export an annotated PNG. No account, server, or runtime npm dependency is needed.
@@ -77,7 +77,7 @@ The extension has no runtime dependencies and does not require a backend.
 3. Enable **Developer mode**.
 4. Select **Load unpacked** and choose this repository folder.
 5. Open an ordinary HTTP(S) webpage.
-6. Click the AirWrite extension icon and select **Enable overlay**.
+6. Click the Overlayed extension icon and select **Enable overlay**.
 7. Use **Browse** when interacting with the webpage and **Draw** when adding an
     annotation. The current mode is shown in the overlay toolbar. Choose
     **Text**, click where the note should start, type, and choose **Place** (or

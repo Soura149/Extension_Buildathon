@@ -530,7 +530,7 @@
         : 'Saved locally';
     }
     const title = ui.title.value.trim() || 'Untitled note';
-    document.title = `${dirty ? '• ' : ''}${title} · AirWrite`;
+    document.title = `${dirty ? '• ' : ''}${title} · Overlayed`;
   }
 
   function refreshContent() {
@@ -854,10 +854,10 @@
       }
       const url = createObjectUrl(blob);
       const anchor = document.createElement('a');
-      const filename = (ui.title.value.trim() || 'AirWrite snapshot')
+      const filename = (ui.title.value.trim() || 'Overlayed snapshot')
         .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
         .replace(/[. ]+$/g, '')
-        .slice(0, 100) || 'AirWrite snapshot';
+        .slice(0, 100) || 'Overlayed snapshot';
       anchor.href = url;
       anchor.download = `${filename}.png`;
       anchor.hidden = true;
@@ -1018,13 +1018,13 @@
     state.notes = globalThis.AirWriteNotes;
     const loader = state.draftId !== null ? 'getDraft' : 'getNote';
     if (!state.notes || ['saveNote', 'deleteDraft', loader].some((method) => typeof state.notes[method] !== 'function')) {
-      showLoadError('Local note storage is unavailable', 'Reload the AirWrite extension and reopen the snapshot. The workspace needs the local notes storage module to read this session.');
+      showLoadError('Local note storage is unavailable', 'Reload the Overlayed extension and reopen the snapshot. The workspace needs the local notes storage module to read this session.');
       return;
     }
     const Canvas = window.AirWriteCanvas;
     if (typeof Canvas !== 'function' || ['getPoint', 'setStrokes', 'getStrokes'].some((method) => typeof Canvas.prototype[method] !== 'function') ||
         typeof globalThis.AirWriteTextAnnotations !== 'function') {
-      showLoadError('The drawing workspace is unavailable', 'Reload the AirWrite extension with its snapshot-enabled drawing engine, then reopen this session.');
+      showLoadError('The drawing workspace is unavailable', 'Reload the Overlayed extension with its snapshot-enabled drawing engine, then reopen this session.');
       return;
     }
 

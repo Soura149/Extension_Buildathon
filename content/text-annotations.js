@@ -49,7 +49,7 @@
       };
 
       this.layer.className = `${this.layer.className || ''} airwrite-text-layer`.trim();
-      this.layer.setAttribute('aria-label', 'AirWrite text annotations');
+      this.layer.setAttribute('aria-label', 'Overlayed text annotations');
       this.layer.addEventListener('pointerdown', (event) => this.handleLayerPointerDown(event));
       this.layer.addEventListener('pointermove', (event) => this.handleDragMove(event));
       this.layer.addEventListener('pointerup', (event) => this.handleDragEnd(event));

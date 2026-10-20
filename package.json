@@ -1,8 +1,8 @@
 {
-  "name": "airwrite",
+  "name": "overlayed",
   "version": "0.1.0",
   "private": true,
-  "description": "AirWrite Chrome extension",
+  "description": "Overlayed Chrome extension",
   "scripts": {
     "test": "node scripts/validate-project.js && node --test tests/*.test.js",
     "test:browser": "node scripts/browser-smoke.js"

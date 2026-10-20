@@ -46,7 +46,7 @@
     } catch (error) {
       activeTabId = null;
       overlayVisible = false;
-      setStatus('AirWrite is unavailable on this page.', true);
+      setStatus('Overlayed is unavailable on this page.', true);
     }
     setButtonState();
   }
@@ -61,7 +61,7 @@
       overlayVisible = Boolean(response?.visible);
       setStatus(overlayVisible ? 'Overlay enabled.' : 'Overlay hidden.');
     } catch (error) {
-      setStatus('AirWrite could not reach this page.', true);
+      setStatus('Overlayed could not reach this page.', true);
     }
     busy = false;
     setButtonState();
@@ -89,14 +89,14 @@
     try {
       await chrome.tabs.create({ url: chrome.runtime.getURL('notes/notes.html') });
     } catch {
-      setStatus('Saved Notes could not be opened. Reload AirWrite and try again.', true);
+      setStatus('Saved Notes could not be opened. Reload Overlayed and try again.', true);
     }
   });
   cameraTestButton.addEventListener('click', async () => {
     try {
       await chrome.tabs.create({ url: chrome.runtime.getURL('camera/camera.html') });
     } catch {
-      setStatus('Camera Test could not be opened. Reload AirWrite and try again.', true);
+      setStatus('Camera Test could not be opened. Reload Overlayed and try again.', true);
     }
   });
   toggleButton.addEventListener('click', toggleOverlay);

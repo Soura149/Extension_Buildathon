@@ -13,9 +13,9 @@
       this.element = document.createElement('div');
       this.element.className = 'airwrite-toolbar';
       this.element.setAttribute('role', 'toolbar');
-      this.element.setAttribute('aria-label', 'AirWrite tools');
+      this.element.setAttribute('aria-label', 'Overlayed tools');
       this.element.append(
-        this.createElement('strong', 'AirWrite', { className: 'airwrite-title' }),
+        this.createElement('strong', 'Overlayed', { className: 'airwrite-title' }),
         this.createModeIndicator(),
         this.createButton('−', { className: 'airwrite-collapse', action: 'collapse', ariaLabel: 'Collapse toolbar' })
       );

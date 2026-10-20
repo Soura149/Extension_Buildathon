@@ -1,8 +1,17 @@
 :root {
   color-scheme: light;
   font-family: Arial, sans-serif;
-  background: #f7f8fc;
-  color: #1d2330;
+  --color-bg-base: #F5F5DC;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-surface-subtle: #FAF9EE;
+  --color-text-primary: #2F4F4F;
+  --color-text-muted: #778899;
+  --color-border-default: #778899;
+  --color-accent-primary: #87CEEB;
+  --color-accent-subtle: #ADDBE6;
+  --color-accent-hover: #72BFDE;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
 }
 
 * {
@@ -32,14 +41,15 @@ body {
   height: 28px;
   place-items: center;
   border-radius: 9px;
-  background: #5b4bdb;
-  color: #fff;
+  background: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 3px 10px rgba(47, 79, 79, 0.12);
 }
 
 .status {
   min-height: 36px;
   margin: 16px 0 12px;
-  color: #596274;
+  color: var(--color-text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -47,12 +57,17 @@ body {
 button {
   width: 100%;
   margin-top: 8px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 10px 12px;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 button:disabled {
@@ -61,20 +76,22 @@ button:disabled {
 }
 
 .primary {
-  background: #5b4bdb;
-  color: #fff;
+  background: #2F4F4F;
+  color: #F5F5DC;
+  box-shadow: 0 4px 12px rgba(47, 79, 79, 0.12);
 }
 
 .primary:hover:not(:disabled) {
-  background: #4939c2;
+  background: #233b3b;
 }
 
-.secondary { background: #e8e5fa; color: #4939c2; }
-button:focus-visible { outline: 3px solid #8c7cff; outline-offset: 3px; }
+.secondary { background: #ADDBE6; color: #2F4F4F; }
+.secondary:hover:not(:disabled) { background: #87CEEB; }
+button:focus-visible { outline: 3px solid #87CEEB; outline-offset: 2px; }
 
 .hint {
   margin: 12px 0 0;
-  color: #737b8c;
+  color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.45;
 }
