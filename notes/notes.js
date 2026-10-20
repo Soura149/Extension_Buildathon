@@ -5,6 +5,7 @@
   const status = document.querySelector('#notes-status');
   const reload = document.querySelector('#reload-notes');
   const objectURLs = new Set();
+  const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
   let generation = 0;
   let active = true;
 
@@ -131,7 +132,7 @@
       busy(true);
       error.hidden = true;
       try {
-        const updated = await globalThis.AirWriteNotes.renameNote(metadata.id, input.value);
+        const updated = await notesApi.renameNote(metadata.id, input.value);
         if (!current()) return;
         heading.textContent = updated.title;
          form.hidden = true;
@@ -149,7 +150,7 @@
       busy(true);
       error.hidden = true;
       try {
-        await globalThis.AirWriteNotes.deleteNote(metadata.id);
+        await notesApi.deleteNote(metadata.id);
         if (!current()) return;
         removed = true;
         revoke(thumbnailURL);
@@ -166,7 +167,7 @@
 
     async function loadThumbnail() {
       try {
-        const note = await globalThis.AirWriteNotes.getNote(metadata.id);
+        const note = await notesApi.getNote(metadata.id);
         if (!current()) return;
         if (!note) {
           thumbnail.textContent = 'This note no longer exists. Reload the list.';
@@ -204,7 +205,7 @@
     reload.disabled = true;
     setStatus('Loading saved notes…', 'loading');
     try {
-      const metadata = await globalThis.AirWriteNotes.listNotes();
+      const metadata = await notesApi.listNotes();
       if (!active || generation !== version) return;
       const cards = metadata.map((note) => createCard(note, version));
       for (const { card } of cards) list.append(card);

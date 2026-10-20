@@ -1,5 +1,5 @@
 (() => {
-  class AirWriteInputAdapter {
+  class OverlayedInputAdapter {
     constructor({ onMove, onSelect, onCancel } = {}) {
       this.onMove = typeof onMove === 'function' ? onMove : () => {};
       this.onSelect = typeof onSelect === 'function' ? onSelect : () => {};
@@ -35,5 +35,6 @@
     }
   }
 
-  window.AirWriteInputAdapter = AirWriteInputAdapter;
+  window.OverlayedInputAdapter = OverlayedInputAdapter;
+  window.AirWriteInputAdapter = OverlayedInputAdapter;
 })();

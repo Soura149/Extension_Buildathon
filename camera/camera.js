@@ -1,7 +1,7 @@
 (function installCameraController(global) {
   'use strict';
 
-  const tracking = global.AirWriteHandTracking;
+  const tracking = global.OverlayedHandTracking || global.AirWriteHandTracking;
   const STATES = Object.freeze({
     OFF: 'Camera off',
     REQUESTING: 'Requesting permission',
@@ -42,7 +42,7 @@
     let lastPoint = null;
     let lastPalmPoint = null;
     let trackingState = { pinching: false, mode: 'none' };
-    let tracker = settings.tracker || global.AirWriteLocalHandTracker || null;
+    let tracker = settings.tracker || global.OverlayedLocalHandTracker || global.AirWriteLocalHandTracker || null;
     let currentState = STATES.OFF;
     let starting = false;
     let lifecycle = 0;
@@ -266,9 +266,12 @@
     return controller;
   }
 
-  global.AirWriteCamera = { STATES, createCameraController };
+  const cameraApi = { STATES, createCameraController };
+  global.OverlayedCamera = cameraApi;
+  global.AirWriteCamera = cameraApi;
   if (global.document) {
     const controller = createCameraController();
+    global.OverlayedCamera.controller = controller;
     global.AirWriteCamera.controller = controller;
     global.addEventListener?.('pagehide', () => controller.stop('page-hidden'));
   }

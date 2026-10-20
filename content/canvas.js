@@ -1,5 +1,5 @@
 (() => {
-  class AirWriteCanvas {
+  class OverlayedCanvas {
     constructor(canvas, options = {}) {
       const { logicalWidth, logicalHeight } = options;
       this.canvas = canvas;
@@ -217,5 +217,6 @@
     }
   }
 
-  window.AirWriteCanvas = AirWriteCanvas;
+  window.OverlayedCanvas = OverlayedCanvas;
+  window.AirWriteCanvas = OverlayedCanvas;
 })();

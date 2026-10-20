@@ -299,7 +299,7 @@
     };
   }
 
-  global.AirWriteHandTracking = {
+  const handTrackingApi = {
     clamp,
     distance,
     distance3d,
@@ -313,4 +313,6 @@
     classifyFrame,
     normalizeLandmarks
   };
+  global.OverlayedHandTracking = handTrackingApi;
+  global.AirWriteHandTracking = handTrackingApi;
 })(typeof globalThis === 'object' ? globalThis : this);

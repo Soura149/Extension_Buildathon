@@ -1,5 +1,6 @@
 (() => {
-  const overlay = new window.AirWriteOverlay();
+  const OverlayClass = window.OverlayedOverlay || window.AirWriteOverlay;
+  const overlay = new OverlayClass();
   let captureSession = null;
 
   const FULL_PAGE_TIMEOUT = 2 * 60 * 1000;
@@ -119,14 +120,17 @@
           if (captureSession?.token === message.token) restoreCapture();
           sendResponse({ ok: true });
           break;
+        case 'OVERLAYED_INPUT_MOVE':
         case 'AIRWRITE_INPUT_MOVE':
           overlay.inputAdapter?.move(message.point);
           sendResponse({ ok: true });
           break;
+        case 'OVERLAYED_INPUT_SELECT':
         case 'AIRWRITE_INPUT_SELECT':
           overlay.inputAdapter?.select(message.point);
           sendResponse({ ok: true });
           break;
+        case 'OVERLAYED_INPUT_CANCEL':
         case 'AIRWRITE_INPUT_CANCEL':
           overlay.inputAdapter?.cancel();
           sendResponse({ ok: true });

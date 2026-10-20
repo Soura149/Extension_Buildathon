@@ -605,5 +605,7 @@
   api.MAX_STORAGE_BYTES = MAX_STORAGE_BYTES;
   api.WARNING_STORAGE_BYTES = WARNING_STORAGE_BYTES;
   api.STORAGE_LIMIT_ERROR = STORAGE_LIMIT_ERROR;
-  globalThis.AirWriteNotes = Object.freeze(api);
+  const frozenApi = Object.freeze(api);
+  globalThis.OverlayedNotes = frozenApi;
+  globalThis.AirWriteNotes = frozenApi;
 })();

@@ -47,5 +47,7 @@
     setupPromise = null;
   }
 
-  global.AirWriteLocalHandTracker = Object.freeze({ start, estimate, stop });
+  const localTracker = Object.freeze({ start, estimate, stop });
+  global.OverlayedLocalHandTracker = localTracker;
+  global.AirWriteLocalHandTracker = localTracker;
 })(typeof globalThis === 'object' ? globalThis : this);

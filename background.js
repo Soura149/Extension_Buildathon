@@ -29,7 +29,10 @@ importScripts('storage/notes.js');
 
   function reportProgress(progress, message) {
     if (typeof chrome.storage?.session?.set === 'function') {
-      chrome.storage.session.set({ airwriteCapture: { active: progress < 100, progress, message } }).catch?.(() => {});
+      chrome.storage.session.set({
+        overlayedCapture: { active: progress < 100, progress, message },
+        airwriteCapture: { active: progress < 100, progress, message }
+      }).catch?.(() => {});
     }
     if (typeof chrome.runtime?.sendMessage !== 'function') return;
     Promise.resolve(chrome.runtime.sendMessage({
@@ -241,19 +244,21 @@ importScripts('storage/notes.js');
       }
       // This fetch decodes a local data URL; it makes no network request.
       const screenshot = await (await fetch(dataUrl)).blob();
-      draftId = await AirWriteNotes.createDraft({
+      const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+      draftId = await notesApi.createDraft({
         screenshot, pageTitle: tab.title || 'Untitled webpage', url: tab.url
       });
       await chrome.tabs.create({ url: chrome.runtime.getURL(`snapshot/snapshot.html?draft=${encodeURIComponent(draftId)}`) });
       return { ok: true };
     } catch (error) {
-      if (draftId) await AirWriteNotes.deleteDraft(draftId).catch(() => {});
+      const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+      if (draftId) await notesApi.deleteDraft(draftId).catch(() => {});
       throw error;
     } finally {
       if (prepared) {
         await chrome.tabs.sendMessage(message.tabId, { type: 'RESTORE_AFTER_SNAPSHOT', token }, options).catch(() => {});
       }
-      if (typeof chrome.storage?.session?.remove === 'function') chrome.storage.session.remove('airwriteCapture').catch?.(() => {});
+      if (typeof chrome.storage?.session?.remove === 'function') chrome.storage.session.remove(['overlayedCapture', 'airwriteCapture']).catch?.(() => {});
       capturing = false;
     }
   }
@@ -271,7 +276,8 @@ importScripts('storage/notes.js');
       if (!response?.ok) throw new Error(response?.error || 'Refresh this webpage to connect Overlayed, then try capturing again.');
       prepared = true;
       const result = await stitchFullPage(message, tab, token, response);
-      draftId = await AirWriteNotes.createDraft({
+      const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+      draftId = await notesApi.createDraft({
         screenshot: result.screenshot,
         pageTitle: tab.title || 'Untitled webpage',
         url: tab.url,
@@ -282,18 +288,31 @@ importScripts('storage/notes.js');
       reportProgress(100, 'Full-page Snapshot opened.');
       return { ok: true, captureMode: result.captureMode, imageWidth: result.imageWidth, imageHeight: result.imageHeight };
     } catch (error) {
-      if (draftId) await AirWriteNotes.deleteDraft(draftId).catch(() => {});
+      const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+      if (draftId) await notesApi.deleteDraft(draftId).catch(() => {});
       throw error;
     } finally {
       if (prepared) {
         await chrome.tabs.sendMessage(message.tabId, { type: 'RESTORE_AFTER_SNAPSHOT', token }, options).catch(() => {});
       }
-      if (typeof chrome.storage?.session?.remove === 'function') chrome.storage.session.remove('airwriteCapture').catch?.(() => {});
+      if (typeof chrome.storage?.session?.remove === 'function') chrome.storage.session.remove(['overlayedCapture', 'airwriteCapture']).catch?.(() => {});
       capturing = false;
     }
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === 'CAPTURE_FROM_OVERLAY') {
+      if (sender.id !== chrome.runtime.id || !sender.tab || !Number.isInteger(sender.tab.id) ||
+          !Number.isInteger(sender.tab.windowId)) {
+        sendResponse({ ok: false, error: 'Capture must be started from the Overlayed page overlay.' });
+        return false;
+      }
+      capture({ tabId: sender.tab.id, windowId: sender.tab.windowId }).then(sendResponse, (error) => sendResponse({
+        ok: false,
+        error: error?.message || 'Capture failed. Keep the webpage active, refresh it after reloading Overlayed, and try again. Chrome may restrict capture or local storage may be full.'
+      }));
+      return true;
+    }
     if (!['CAPTURE_VISIBLE_TAB', 'CAPTURE_FULL_PAGE'].includes(message?.type)) return false;
     // Content scripts and unrelated extension pages cannot initiate a capture.
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup/popup.html') ||

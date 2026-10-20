@@ -1,6 +1,6 @@
 (() => {
-  class AirWriteToolbar {
-    constructor({ onModeChange, onToolChange, onColorChange, onWidthChange, onTextSizeChange, onUndo, onRedo, onClear, onHide }) {
+  class OverlayedToolbar {
+    constructor({ onModeChange, onToolChange, onColorChange, onWidthChange, onTextSizeChange, onUndo, onRedo, onClear, onHide, onSave }) {
       this.onModeChange = onModeChange;
       this.onToolChange = onToolChange;
       this.onColorChange = onColorChange;
@@ -10,17 +10,18 @@
       this.onRedo = onRedo;
       this.onClear = onClear;
       this.onHide = onHide;
+      this.onSave = onSave;
       this.element = document.createElement('div');
-      this.element.className = 'airwrite-toolbar';
+      this.element.className = 'overlayed-toolbar airwrite-toolbar';
       this.element.setAttribute('role', 'toolbar');
       this.element.setAttribute('aria-label', 'Overlayed tools');
       this.element.append(
-        this.createElement('strong', 'Overlayed', { className: 'airwrite-title' }),
+        this.createElement('strong', 'Overlayed', { className: 'overlayed-title airwrite-title' }),
         this.createModeIndicator(),
-        this.createButton('−', { className: 'airwrite-collapse', action: 'collapse', ariaLabel: 'Collapse toolbar' })
+        this.createButton('−', { className: 'overlayed-collapse airwrite-collapse', action: 'collapse', ariaLabel: 'Collapse toolbar' })
       );
 
-      const controls = this.createElement('div', null, { className: 'airwrite-controls' });
+      const controls = this.createElement('div', null, { className: 'overlayed-controls airwrite-controls' });
       controls.append(this.createDivider());
 
       const modeGroup = this.createElement('span', null, {
@@ -89,6 +90,7 @@
         this.createButton('Undo', { action: 'undo' }),
         this.createButton('Redo', { action: 'redo' }),
         this.createButton('Clear', { action: 'clear' }),
+        this.createButton('Save', { action: 'save', title: 'Capture page and open Snapshot Canvas', className: 'airwrite-save' }),
         this.createButton('Hide', { action: 'hide' })
       );
       this.element.append(controls);
@@ -199,6 +201,8 @@
         this.onUndo();
       } else if (button.dataset.action === 'redo') {
         this.onRedo();
+      } else if (button.dataset.action === 'save') {
+        this.onSave?.();
       } else if (button.dataset.action === 'collapse') {
         const collapsed = this.element.classList.toggle('collapsed');
         button.textContent = collapsed ? '+' : '−';
@@ -228,5 +232,6 @@
     }
   }
 
-  window.AirWriteToolbar = AirWriteToolbar;
+  window.OverlayedToolbar = OverlayedToolbar;
+  window.AirWriteToolbar = OverlayedToolbar;
 })();

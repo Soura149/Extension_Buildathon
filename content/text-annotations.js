@@ -25,7 +25,7 @@
       Number.isFinite(annotation.createdAt) && Number.isFinite(annotation.updatedAt);
   }
 
-  class AirWriteTextAnnotations {
+  class OverlayedTextAnnotations {
     constructor(layer, { onPlace, onCreate, onEdit, onDelete, onMove, onEditorStateChange, defaultColor, defaultFontSize, coordinateAdapter } = {}) {
       this.layer = layer;
       this.annotations = [];
@@ -48,7 +48,7 @@
         editorBounds: () => ({ width: window.innerWidth, height: window.innerHeight })
       };
 
-      this.layer.className = `${this.layer.className || ''} airwrite-text-layer`.trim();
+      this.layer.className = `${this.layer.className || ''} overlayed-text-layer airwrite-text-layer`.trim();
       this.layer.setAttribute('aria-label', 'Overlayed text annotations');
       this.layer.addEventListener('pointerdown', (event) => this.handleLayerPointerDown(event));
       this.layer.addEventListener('pointermove', (event) => this.handleDragMove(event));
@@ -455,5 +455,6 @@
     }
   }
 
-  window.AirWriteTextAnnotations = AirWriteTextAnnotations;
+  window.OverlayedTextAnnotations = OverlayedTextAnnotations;
+  window.AirWriteTextAnnotations = OverlayedTextAnnotations;
 })();

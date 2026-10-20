@@ -67,7 +67,8 @@
         if (!window.confirm(`Delete “${note.title || 'Untitled note'}”?`)) return;
         remove.disabled = true;
         try {
-          await globalThis.AirWriteNotes.deleteNote(note.id);
+          const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+          await notesApi.deleteNote(note.id);
           await loadRecent();
         } catch (error) {
           remove.disabled = false;
@@ -80,10 +81,11 @@
   }
 
   async function loadRecent() {
-    if (!recentList || !globalThis.AirWriteNotes?.getNotes) return;
+    const notesApi = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
+    if (!recentList || !notesApi?.getNotes) return;
     setRecentStatus('Loading saved work…');
     try {
-      const notes = await globalThis.AirWriteNotes.getNotes();
+      const notes = await notesApi.getNotes();
       renderRecent(Array.isArray(notes) ? notes : []);
     } catch (error) {
       setRecentStatus(error?.message || 'Saved work could not be loaded.', true);

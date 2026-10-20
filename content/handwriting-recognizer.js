@@ -121,10 +121,12 @@
     }
   }
 
-  globalThis.AirWriteHandwriting = Object.freeze({
+  const handwritingApi = Object.freeze({
     VOCABULARY,
     StrokeCollector,
     Recognizer,
     normalizeStrokes
   });
+  globalThis.OverlayedHandwriting = handwritingApi;
+  globalThis.AirWriteHandwriting = handwritingApi;
 })();

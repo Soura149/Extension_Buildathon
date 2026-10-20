@@ -13,7 +13,8 @@
     sourceTitle: byId('source-title'),
     sourceUrl: byId('source-url'),
     createdAt: byId('created-at'),
-    save: byId('save-note'),
+     save: byId('save-note'),
+     stickySave: byId('sticky-save-note'),
     export: byId('export-image'),
     discard: byId('discard'),
     savedNotes: byId('saved-notes'),
@@ -406,7 +407,7 @@
   }
 
   function initializeHandwriting() {
-    const api = globalThis.AirWriteHandwriting;
+    const api = globalThis.OverlayedHandwriting || globalThis.AirWriteHandwriting;
     if (!api?.StrokeCollector || !api.Recognizer) {
       setHandwritingStatus('The local handwriting adapter is unavailable. Use the keyboard fallback.');
       return;
@@ -540,8 +541,9 @@
   }
 
   function initializeTextAnnotations() {
-    if (!globalThis.AirWriteTextAnnotations || !ui.textLayer) return;
-    state.textAnnotations = new globalThis.AirWriteTextAnnotations(ui.textLayer, {
+    const TextAnnotationsClass = globalThis.OverlayedTextAnnotations || globalThis.AirWriteTextAnnotations;
+    if (!TextAnnotationsClass || !ui.textLayer) return;
+    state.textAnnotations = new TextAnnotationsClass(ui.textLayer, {
       coordinateAdapter: textCoordinateAdapter(),
       onCreate: (draft) => {
         const before = workspaceSnapshot();
@@ -595,8 +597,9 @@
   }
 
   function initializeAirwriting() {
-    if (state.camera || !globalThis.AirWriteCamera?.createCameraController) return;
-    state.camera = globalThis.AirWriteCamera.createCameraController({
+    const CameraApi = globalThis.OverlayedCamera || globalThis.AirWriteCamera;
+    if (state.camera || !CameraApi?.createCameraController) return;
+    state.camera = CameraApi.createCameraController({
       elements: {
         video: ui.airwritingVideo,
         start: ui.airwritingStart,
@@ -605,7 +608,7 @@
         error: ui.airwritingError,
         cursor: ui.airwritingCursor
       },
-      tracker: globalThis.AirWriteLocalHandTracker,
+      tracker: globalThis.OverlayedLocalHandTracker || globalThis.AirWriteLocalHandTracker,
       mirror: true,
       smoothing: 0.2,
       maxPointJump: 0.18,
@@ -714,6 +717,7 @@
     ui.title.disabled = locked;
     ui.controls.disabled = locked;
     ui.save.disabled = locked || drawing;
+    if (ui.stickySave) ui.stickySave.disabled = locked || drawing;
     ui.export.disabled = locked || drawing || state.exporting;
     ui.discard.disabled = locked;
       ui.canvas.setAttribute('aria-disabled', String(locked));
@@ -721,6 +725,7 @@
     ui.savedNotes.setAttribute('aria-disabled', String(state.operation !== null));
     ui.savedNotes.tabIndex = state.operation === null ? 0 : -1;
     ui.save.textContent = state.operation === 'save' ? 'Saving…' : 'Save Note';
+    if (ui.stickySave) ui.stickySave.textContent = state.operation === 'save' ? 'Saving…' : 'Save Note';
     ui.discard.textContent = state.operation === 'discard' ? 'Discarding…' : 'Discard';
     ui.export.textContent = state.exporting ? 'Exporting…' : 'Export Image PNG';
      ui.clear.disabled = locked || (!drawing && (!state.engine || state.engine.getStrokes().length === 0));
@@ -939,6 +944,7 @@
   ui.undo.addEventListener('click', () => changeHistory('undo'));
   ui.redo.addEventListener('click', () => changeHistory('redo'));
   ui.clear.addEventListener('click', () => changeHistory('clear'));
+  ui.stickySave?.addEventListener('click', saveNote);
   ui.textMode?.addEventListener('click', () => setAnnotationMode('text'));
   ui.handwritingMode?.addEventListener('click', () => setAnnotationMode('handwriting'));
   ui.handwritingRecognize?.addEventListener('click', recognizeHandwriting);
@@ -1273,15 +1279,16 @@
 
     state.draftId = drafts.length ? drafts[0] : null;
     state.noteId = notes.length ? notes[0] : null;
-    state.notes = globalThis.AirWriteNotes;
+    state.notes = globalThis.OverlayedNotes || globalThis.AirWriteNotes;
     const loader = state.draftId !== null ? 'getDraft' : 'getNote';
     if (!state.notes || ['saveNote', 'deleteDraft', loader].some((method) => typeof state.notes[method] !== 'function')) {
       showLoadError('Local note storage is unavailable', 'Reload the Overlayed extension and reopen the snapshot. The workspace needs the local notes storage module to read this session.');
       return;
     }
-    const Canvas = window.AirWriteCanvas;
+    const Canvas = window.OverlayedCanvas || window.AirWriteCanvas;
+    const TextAnnotationsClass = globalThis.OverlayedTextAnnotations || globalThis.AirWriteTextAnnotations;
     if (typeof Canvas !== 'function' || ['getPoint', 'setStrokes', 'getStrokes'].some((method) => typeof Canvas.prototype[method] !== 'function') ||
-        typeof globalThis.AirWriteTextAnnotations !== 'function') {
+        typeof TextAnnotationsClass !== 'function') {
       showLoadError('The drawing workspace is unavailable', 'Reload the Overlayed extension with its snapshot-enabled drawing engine, then reopen this session.');
       return;
     }

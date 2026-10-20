@@ -37,6 +37,8 @@
     .airwrite-toolbar button:hover { background: #ADDBE6; color: #2F4F4F; }
     .airwrite-mode-group button.selected { background: #87CEEB; color: #2F4F4F; font-weight: bold; }
     .airwrite-toolbar button[data-tool].selected { background: #ADDBE6; color: #2F4F4F; font-weight: bold; }
+    .airwrite-toolbar button.airwrite-save { background: #87CEEB; color: #2F4F4F; font-weight: bold; }
+    .airwrite-toolbar button.airwrite-save:hover { background: #72BFDE; }
     .airwrite-toolbar button:active:not(:disabled) { transform: scale(.98); }
     .airwrite-toolbar button:focus-visible, .airwrite-text-editor input:focus-visible, .airwrite-text-editor button:focus-visible { outline: 3px solid #87CEEB; outline-offset: 2px; }
     .airwrite-colors { display: flex; gap: 4px; }
@@ -49,7 +51,7 @@
     .airwrite-width input { width: 65px; accent-color: #87CEEB; }
   `;
 
-  class AirWriteOverlay {
+  class OverlayedOverlay {
     constructor() {
       this.host = null;
       this.shadowRoot = null;
@@ -89,11 +91,13 @@
       this.canvasElement.className = 'airwrite-canvas';
        this.canvasElement.setAttribute('aria-label', 'Overlayed drawing surface');
       this.shadowRoot.append(this.canvasElement);
-      this.canvas = new window.AirWriteCanvas(this.canvasElement, { history: false });
+      const CanvasClass = window.OverlayedCanvas || window.AirWriteCanvas;
+      this.canvas = new CanvasClass(this.canvasElement, { history: false });
       this.canvas.setColor(this.color);
 
       this.textLayerElement = document.createElement('div');
-      this.textLayer = new window.AirWriteTextAnnotations(this.textLayerElement, {
+      const TextAnnotationsClass = window.OverlayedTextAnnotations || window.AirWriteTextAnnotations;
+      this.textLayer = new TextAnnotationsClass(this.textLayerElement, {
         onPlace: (point) => {
           if (this.inputAdapter) this.inputAdapter.select(point);
           else this.openTextEditor(point);
@@ -105,13 +109,15 @@
         onEditorStateChange: (editing) => this.inputAdapter?.setEnabled(!editing)
       });
       this.textLayer.setDefaultStyle({ color: this.color });
-      this.inputAdapter = new window.AirWriteInputAdapter({
+      const InputAdapterClass = window.OverlayedInputAdapter || window.AirWriteInputAdapter;
+      this.inputAdapter = new InputAdapterClass({
         onSelect: (point) => this.openTextEditor(point),
         onCancel: () => this.textLayer?.cancelEditor()
       });
       this.shadowRoot.append(this.textLayerElement);
 
-      this.toolbar = new window.AirWriteToolbar({
+      const ToolbarClass = window.OverlayedToolbar || window.AirWriteToolbar;
+      this.toolbar = new ToolbarClass({
         onModeChange: (mode) => this.setMode(mode),
         onToolChange: (tool) => this.setTool(tool),
         onColorChange: (color) => this.setColor(color),
@@ -120,6 +126,7 @@
         onUndo: () => this.undo(),
         onRedo: () => this.redo(),
         onClear: () => this.clear(),
+        onSave: () => this.saveNote(),
         onHide: () => this.hide()
       });
       this.shadowRoot.append(this.toolbar.element);
@@ -132,6 +139,32 @@
       window.addEventListener('resize', this.handleResize);
       window.addEventListener('blur', this.handleWindowBlur);
       document.documentElement.append(this.host);
+    }
+
+    saveNote() {
+      const button = this.toolbar?.element.querySelector('[data-action="save"]');
+      if (button?.disabled) return;
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Saving…';
+      }
+      const restoreButton = () => {
+        if (!button) return;
+        button.disabled = false;
+        button.textContent = 'Save';
+      };
+      try {
+        const request = chrome.runtime.sendMessage({ type: 'CAPTURE_FROM_OVERLAY' });
+        Promise.resolve(request).then((response) => {
+          if (response && response.ok === false) {
+            button?.setAttribute('title', response.error || 'Capture failed. Try again.');
+          }
+        }, () => {
+          button?.setAttribute('title', 'Capture failed. Try again.');
+        }).finally(restoreButton);
+      } catch {
+        restoreButton();
+      }
     }
 
     snapshot() {
@@ -337,5 +370,6 @@
     }
   }
 
-  window.AirWriteOverlay = AirWriteOverlay;
+  window.OverlayedOverlay = OverlayedOverlay;
+  window.AirWriteOverlay = OverlayedOverlay;
 })();
